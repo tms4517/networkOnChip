@@ -15,8 +15,11 @@ module router
  , parameter int unsigned ROUTER_COL = 0
  , parameter int unsigned GRID_WIDTH = 4
 )
-( // To/from network interfaces
-  input  var logic [APB_PACKET_WIDTH-1:0] i_apbPacket
+( input  var logic i_clk
+, input  var logic i_arst_n
+
+// To/from network interfaces
+, input  var logic [APB_PACKET_WIDTH-1:0] i_apbPacket
 , output var logic [APB_PACKET_WIDTH-1:0] o_apbPacket
 
   // To/from neighboring routers
@@ -60,34 +63,63 @@ module router
     isDestination = (destinationRow == ROUTER_ROW) &&
                     (destinationCol == ROUTER_COL);
 
-  always_comb
-    o_apbPacket = isDestination ? i_apbPacket : '0;
+  always_ff @(posedge i_clk or negedge i_arst_n)
+    if (!i_arst_n)
+      o_apbPacket <= '0;
+    else
+      o_apbPacket <= isDestination ? i_apbPacket : '0;
   // }}} Router coordinates match destination coordinates
 
   // {{{ Forward packets to neighboring routers
   // The packet moves horizontally until it reaches the correct column, then
   // moves vertically to the correct row.
-  always_comb
-    o_east = &{!isDestination
-              , destinationCol > ROUTER_COL
-             } ? i_apbPacket : '0;
+  logic [APB_PACKET_WIDTH-1:0] eastPacket, westPacket, northPacket, southPacket;
+
+  always_ff @(posedge i_clk or negedge i_arst_n)
+    if (!i_arst_n)
+      o_east <= '0;
+    else
+      o_east <= eastPacket;
 
   always_comb
-    o_west = &{!isDestination
-              , destinationCol < ROUTER_COL
-             } ? i_apbPacket : '0;
+    eastPacket = &{!isDestination
+                 , destinationCol > ROUTER_COL
+                 } ? i_apbPacket : '0;
+
+  always_ff @(posedge i_clk or negedge i_arst_n)
+    if (!i_arst_n)
+      o_west <= '0;
+    else
+      o_west <= westPacket;
 
   always_comb
-    o_south = &{!isDestination
-               , destinationCol == ROUTER_COL
-               , destinationRow > ROUTER_ROW
-              } ? i_apbPacket : '0;
+    westPacket = &{!isDestination
+                 , destinationCol < ROUTER_COL
+                 } ? i_apbPacket : '0;
+
+  always_ff @(posedge i_clk or negedge i_arst_n)
+    if (!i_arst_n)
+      o_south <= '0;
+    else
+      o_south <= southPacket;
 
   always_comb
-    o_north = &{!isDestination
-               , destinationCol == ROUTER_COL
-               , destinationRow < ROUTER_ROW
-              } ? i_apbPacket : '0;
+    southPacket = &{!isDestination
+                  , destinationCol == ROUTER_COL
+                  , destinationRow > ROUTER_ROW
+                  } ? i_apbPacket : '0;
+
+  always_ff @(posedge i_clk or negedge i_arst_n)
+    if (!i_arst_n)
+      o_north <= '0;
+    else
+      o_north <= northPacket;
+
+  always_comb
+    northPacket = &{!isDestination
+                  , destinationCol == ROUTER_COL
+                  , destinationRow < ROUTER_ROW
+                  } ? i_apbPacket : '0;
   // }}} Forward packets to neighboring routers
 
 endmodule
