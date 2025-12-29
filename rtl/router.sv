@@ -30,15 +30,27 @@ module router
 , output var logic [APB_PACKET_WIDTH-1:0] o_west
 );
 
+  // For now until routing has been tested, we combine packets from NI and
+  // neighboring routers.
+  logic [APB_PACKET_WIDTH-1:0] apbPacket;
+
+  always_comb
+    apbPacket = ^{i_apbPacket
+                 , i_north
+                 , i_south
+                 , i_east
+                 , i_west
+                };
+
   // {{{ Decode destination coordinates from incoming packet
   localparam int unsigned COORD_WIDTH = $clog2(GRID_WIDTH);
   logic [COORD_WIDTH-1:0] destinationRow, destinationCol;
 
   always_comb
-    destinationRow = i_apbPacket[3:2];
+    destinationRow = apbPacket[3:2];
 
   always_comb
-    destinationCol = i_apbPacket[1:0];
+    destinationCol = apbPacket[1:0];
   // }}} Decode destination coordinates from incoming packet
 
   // {{{ Router coordinates match destination coordinates
