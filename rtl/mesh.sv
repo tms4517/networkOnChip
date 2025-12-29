@@ -23,8 +23,7 @@
 import pa_noc::*;
 
 module mesh
-#( parameter int unsigned GRID_WIDTH = 4
-)
+#(parameter int unsigned GRID_WIDTH = 4)
 ( input  var logic i_clk
 , input  var logic i_arst_n
 
