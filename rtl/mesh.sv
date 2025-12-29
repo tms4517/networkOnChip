@@ -28,7 +28,7 @@ module mesh
 ( input  var logic i_clk
 , input  var logic i_arst_n
 
-, input var logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][APB_PACKET_WIDTH-1:0] niToRouter
+, input  var logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][APB_PACKET_WIDTH-1:0] niToRouter
 , output var logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][APB_PACKET_WIDTH-1:0] routerToNi
 );
 
