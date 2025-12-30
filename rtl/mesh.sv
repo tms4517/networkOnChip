@@ -114,7 +114,7 @@ module mesh
       , .ROUTER_COL (col)
       , .GRID_WIDTH (GRID_WIDTH)
       ) u_router
-      ( .i_clk(i_clk)
+      ( .i_clk   (i_clk)
       , .i_arst_n(i_arst_n)
 
       , .i_apbPacket (niToRouter[row][col])
