@@ -76,10 +76,14 @@ module router
     else
       o_east <= eastPacket;
 
+  // For edge routers at max column (GRID_WIDTH-1), comparison is always false
+  // (optimized away by synthesis).
+  /* verilator lint_off CMPCONST */
   always_comb
     eastPacket = &{!isDestination
                  , destinationCol > ROUTER_COL
                  } ? i_apbPacket : '0;
+  /* verilator lint_on CMPCONST */
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
@@ -102,11 +106,15 @@ module router
     else
       o_south <= southPacket;
 
+  // For edge routers at max row (GRID_WIDTH-1), comparison is always false
+  // (optimized away by synthesis).
+  /* verilator lint_off CMPCONST */
   always_comb
     southPacket = &{!isDestination
                   , destinationCol == ROUTER_COL
                   , destinationRow > ROUTER_ROW
                   } ? i_apbPacket : '0;
+  /* verilator lint_on CMPCONST */
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
