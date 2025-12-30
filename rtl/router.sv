@@ -11,9 +11,9 @@
 import pa_noc::*;
 
 module router
-#( parameter int unsigned ROUTER_ROW = 0
- , parameter int unsigned ROUTER_COL = 0
- , parameter int unsigned GRID_WIDTH = 4
+#( parameter int unsigned GRID_WIDTH = 4
+ , parameter bit [$clog2(GRID_WIDTH)-1:0] ROUTER_ROW = 0
+ , parameter bit [$clog2(GRID_WIDTH)-1:0] ROUTER_COL = 0
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n
@@ -87,10 +87,14 @@ module router
     else
       o_west <= westPacket;
 
+  // For edge routers at column 0, comparison is always false
+  // (optimized away by synthesis).
+  /* verilator lint_off UNSIGNED */
   always_comb
     westPacket = &{!isDestination
                  , destinationCol < ROUTER_COL
                  } ? i_apbPacket : '0;
+  /* verilator lint_on UNSIGNED */
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
@@ -110,11 +114,15 @@ module router
     else
       o_north <= northPacket;
 
+  // For edge routers at row 0, comparison is always false
+  // (optimized away by synthesis).
+  /* verilator lint_off UNSIGNED */
   always_comb
     northPacket = &{!isDestination
                   , destinationCol == ROUTER_COL
                   , destinationRow < ROUTER_ROW
                   } ? i_apbPacket : '0;
+  /* verilator lint_on UNSIGNED */
   // }}} Forward packets to neighboring routers
 
 endmodule
