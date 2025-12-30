@@ -27,8 +27,8 @@ module mesh
 ( input  var logic i_clk
 , input  var logic i_arst_n
 
-, input  var logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][APB_PACKET_WIDTH-1:0] niToRouter
-, output var logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][APB_PACKET_WIDTH-1:0] routerToNi
+, input  var logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][APB_PACKET_WIDTH-1:0] i_niToRouter
+, output var logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][APB_PACKET_WIDTH-1:0] o_routerToNi
 );
 
   /* verilator lint_off UNUSED */
@@ -117,8 +117,8 @@ module mesh
       ( .i_clk   (i_clk)
       , .i_arst_n(i_arst_n)
 
-      , .i_apbPacket (niToRouter[row][col])
-      , .o_apbPacket (routerToNi[row][col])
+      , .i_apbPacket (i_niToRouter[row][col])
+      , .o_apbPacket (o_routerToNi[row][col])
 
       , .i_north (northInput[row][col])
       , .i_south (southInput[row][col])
