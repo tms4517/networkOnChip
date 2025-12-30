@@ -11,9 +11,9 @@
 import pa_noc::*;
 
 module router
-#( parameter int unsigned GRID_WIDTH = 4
- , parameter bit [$clog2(GRID_WIDTH)-1:0] ROUTER_ROW = 0
- , parameter bit [$clog2(GRID_WIDTH)-1:0] ROUTER_COL = 0
+#(parameter int unsigned GRID_WIDTH = 4
+, parameter bit [$clog2(GRID_WIDTH)-1:0] ROUTER_ROW = 0
+, parameter bit [$clog2(GRID_WIDTH)-1:0] ROUTER_COL = 0
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n
@@ -55,8 +55,8 @@ module router
   logic isDestination;
 
   always_comb
-    isDestination = (destinationRow == ROUTER_ROW) &&
-                    (destinationCol == ROUTER_COL);
+    isDestination = (destinationRow == ROUTER_ROW)
+                    && (destinationCol == ROUTER_COL);
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
@@ -81,8 +81,8 @@ module router
   /* verilator lint_off CMPCONST */
   always_comb
     eastPacket = &{!isDestination
-                 , destinationCol > ROUTER_COL
-                 } ? i_apbPacket : '0;
+                  , destinationCol > ROUTER_COL
+                  } ? i_apbPacket : '0;
   /* verilator lint_on CMPCONST */
 
   always_ff @(posedge i_clk or negedge i_arst_n)
@@ -96,8 +96,8 @@ module router
   /* verilator lint_off UNSIGNED */
   always_comb
     westPacket = &{!isDestination
-                 , destinationCol < ROUTER_COL
-                 } ? i_apbPacket : '0;
+                  , destinationCol < ROUTER_COL
+                  } ? i_apbPacket : '0;
   /* verilator lint_on UNSIGNED */
 
   always_ff @(posedge i_clk or negedge i_arst_n)
