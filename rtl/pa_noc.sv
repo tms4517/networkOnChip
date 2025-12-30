@@ -1,7 +1,7 @@
 // Do not modify this file.
 
 `ifndef PA_NOC
-  `define PA_NOC
+`define PA_NOC
 
 `default_nettype none
 
