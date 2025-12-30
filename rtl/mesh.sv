@@ -110,9 +110,9 @@ module mesh
     for (genvar col = 0; col < GRID_WIDTH; col++) begin: perCol
 
       router
-      #(. ROUTER_ROW (row)
-      , . ROUTER_COL (col)
-      , . GRID_WIDTH (GRID_WIDTH)
+      #(.ROUTER_ROW (row)
+      , .ROUTER_COL (col)
+      , .GRID_WIDTH (GRID_WIDTH)
       ) u_router
       ( .i_clk(i_clk)
       , .i_arst_n(i_arst_n)
