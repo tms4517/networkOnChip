@@ -32,13 +32,13 @@ module mesh
 );
 
   /* verilator lint_off UNUSED */
-  // Inputs from neighboring routers
+  // Inputs to router from neighboring routers
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][APB_PACKET_WIDTH-1:0] northInput;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][APB_PACKET_WIDTH-1:0] southInput;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][APB_PACKET_WIDTH-1:0] eastInput;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][APB_PACKET_WIDTH-1:0] westInput;
 
-  // Outputs to neighboring routers
+  // Outputs from router to neighboring routers
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][APB_PACKET_WIDTH-1:0] northOutput;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][APB_PACKET_WIDTH-1:0] southOutput;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][APB_PACKET_WIDTH-1:0] eastOutput;
