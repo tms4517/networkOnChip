@@ -38,7 +38,7 @@ module router
   logic [APB_PACKET_WIDTH-1:0] apbPacket;
 
   always_comb
-    apbPacket = i_apbPacket || i_north || i_south || i_east || i_west;
+    apbPacket = i_apbPacket | i_north | i_south | i_east | i_west;
 
   // {{{ Decode destination coordinates from incoming packet
   localparam int unsigned COORD_WIDTH = $clog2(GRID_WIDTH);
