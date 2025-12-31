@@ -2,8 +2,9 @@ TOP_MODULE=noc
 RTL_PATH=../rtl
 
 .PHONY: lint
-lint: $(RTL_PATH)/$(TOP_MODULE).sv
-	verilator --lint-only -I../rtl/ pa_$(TOP_MODULE).sv $(TOP_MODULE).sv
+lint:
+	verilator --lint-only -sv -f noc.f
+	svlint -f noc.f -c ../.svlint.toml
 
 .PHONY: clean
 clean:
