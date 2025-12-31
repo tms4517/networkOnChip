@@ -1,3 +1,5 @@
+// Top level module.
+
 `default_nettype none
 
 import pa_noc::*;
