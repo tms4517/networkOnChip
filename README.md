@@ -30,7 +30,7 @@ The NoC uses a 2D mesh topology where routers are arranged in a grid pattern. Ea
 - **Four neighboring routers** (North, South, East, West) - except edge routers which have fewer connections
 - **Two local Network Interface (NI)**: one converts packets from the router to
 a communication protocol that an IP block can understand; the other converts
-a communication protocol to packets that can be routed.
+a communication protocol from IP blocks to packets that can be routed.
 
 The mesh size is configurable via the `GRID_WIDTH` parameter (minimum 2x2 grid).
 
@@ -48,17 +48,11 @@ Each router implements deterministic **XY routing**:
 2. **Y-dimension second:** Once aligned column-wise, packets move vertically (North/South) to the destination row
 3. **Local delivery:** When router coordinates match the destination, the packet is forwarded to the local NI
 
-This guarantees deadlock-free routing in the mesh topology.
+This simple address-based routing eliminates the need for routing tables.
 
 ### Module Hierarchy
 
 - **[noc.sv](rtl/noc.sv):** Top-level module that instantiates the mesh
 - **[mesh.sv](rtl/mesh.sv):** Interconnects routers in a 2D grid, handling all router-to-router connections and edge router boundary conditions
-- **[router.sv](rtl/router.sv):** Individual router implementing XY routing logic with 5 ports (4 neighbors + 1 local NI)
-- **[pa_noc.sv](rtl/pa_noc.sv):** Package containing parameter definitions and packet format constants
-
-### Key Design Choices
-
-- **Registered outputs:** All router outputs are registered to improve timing.
-- **Edge optimization:** Synthesis automatically optimizes away impossible routing comparisons at mesh boundaries.
-- **Coordinate-based routing:** Simple address-based routing eliminates need for routing tables.
+- **[router.sv](rtl/router.sv):** Individual router implementing XY routing logic with 10 ports (I/O from 4 neighbors + 2 local NI).
+- **[pa_noc.sv](rtl/pa_noc.sv):** Package containing parameter definitions and packet format constants.
