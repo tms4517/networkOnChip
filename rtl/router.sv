@@ -32,12 +32,14 @@ module router
 , output var logic [APB_PACKET_WIDTH-1:0] o_west
 );
 
+  /* verilator lint_off UNUSED */
   // For now until routing has been tested, we combine packets from NI and
   // neighboring routers.
   logic [APB_PACKET_WIDTH-1:0] apbPacket;
 
   always_comb
     apbPacket = i_apbPacket | i_north | i_south | i_east | i_west;
+  /* verilator lint_on UNUSED */
 
   // {{{ Decode destination coordinates from incoming packet
   localparam int unsigned COORD_WIDTH = $clog2(GRID_WIDTH);
