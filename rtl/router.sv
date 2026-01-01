@@ -8,12 +8,11 @@
 
 `default_nettype none
 
-import pa_noc::*;
-
 module router
 #(parameter int unsigned GRID_WIDTH = 4
 , parameter bit [$clog2(GRID_WIDTH)-1:0] ROUTER_ROW = 0
 , parameter bit [$clog2(GRID_WIDTH)-1:0] ROUTER_COL = 0
+, localparam int unsigned APB_PACKET_WIDTH = pa_noc::APB_PACKET_WIDTH
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n

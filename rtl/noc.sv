@@ -2,10 +2,10 @@
 
 `default_nettype none
 
-import pa_noc::*;
-
 module noc
-#(parameter int unsigned GRID_WIDTH = 4)
+#(parameter int unsigned GRID_WIDTH = 4
+, localparam int unsigned APB_PACKET_WIDTH = pa_noc::APB_PACKET_WIDTH
+)
 ( input  var logic i_clk
 , input  var logic i_arst_n
 
