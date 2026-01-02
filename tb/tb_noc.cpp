@@ -24,6 +24,11 @@ void dut_reset(Vnoc *dut) {
 
   if ((sim_time > RESET_DEASSERT+1) && (sim_time < RESET_ASSERT+1)) {
     dut->i_arst_n = 0;
+
+    // Clear all elements
+    for (int i = 0; i < 37; i++) {
+      dut->i_niToRouter[i] = 0;
+    }
   }
 }
 
@@ -50,6 +55,10 @@ int main(int argc, char **argv, char **env) {
 
     if (dut->i_clk == 1) {
       posedge_cnt++;
+
+      if (sim_time > RESET_ASSERT+1) {
+        dut->i_niToRouter[0] = 0x04;
+      }
     }
 
     // Write all the traced signal values into the waveform dump file.
