@@ -63,7 +63,7 @@ module router
     if (!i_arst_n)
       o_apbPacket <= '0;
     else
-      o_apbPacket <= isDestination ? i_apbPacket : '0;
+      o_apbPacket <= isDestination ? apbPacket : '0;
   // }}} Router coordinates match destination coordinates
 
   // {{{ Forward packets to neighboring routers
