@@ -10,7 +10,8 @@
 #include <verilated_vcd_c.h> // Write waverforms to a VCD file.
 
 #define MAX_SIM_TIME 1000 // Number of clk edges.
-#define RESET_NEG_EDGE 5  // Clk edge number to deassert arst.
+#define RESET_DEASSERT 2  // Clk edge number to deassert arst.
+#define RESET_ASSERT 5    // Clk edge number to assert arst.
 
 vluint64_t sim_time = 0;
 vluint64_t posedge_cnt = 0;
@@ -21,7 +22,7 @@ vluint64_t posedge_cnt = 0;
 void dut_reset(Vnoc *dut) {
   dut->i_arst_n = 1;
 
-  if ((sim_time > 2) && (sim_time < RESET_NEG_EDGE)) {
+  if ((sim_time > RESET_DEASSERT+1) && (sim_time < RESET_ASSERT+1)) {
     dut->i_arst_n = 0;
   }
 }
