@@ -83,7 +83,7 @@ module router
   always_comb
     eastPacket = &{!isDestination
                   , destinationCol > ROUTER_COL
-                  } ? i_apbPacket : '0;
+                  } ? apbPacket : '0;
   /* verilator lint_on CMPCONST */
 
   always_ff @(posedge i_clk or negedge i_arst_n)
@@ -98,7 +98,7 @@ module router
   always_comb
     westPacket = &{!isDestination
                   , destinationCol < ROUTER_COL
-                  } ? i_apbPacket : '0;
+                  } ? apbPacket : '0;
   /* verilator lint_on UNSIGNED */
 
   always_ff @(posedge i_clk or negedge i_arst_n)
@@ -114,7 +114,7 @@ module router
     southPacket = &{!isDestination
                   , destinationCol == ROUTER_COL
                   , destinationRow > ROUTER_ROW
-                  } ? i_apbPacket : '0;
+                  } ? apbPacket : '0;
   /* verilator lint_on CMPCONST */
 
   always_ff @(posedge i_clk or negedge i_arst_n)
@@ -130,7 +130,7 @@ module router
     northPacket = &{!isDestination
                   , destinationCol == ROUTER_COL
                   , destinationRow < ROUTER_ROW
-                  } ? i_apbPacket : '0;
+                  } ? apbPacket : '0;
   /* verilator lint_on UNSIGNED */
   // }}} Forward packets to neighboring routers
 
