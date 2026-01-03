@@ -12,6 +12,7 @@
 #define MAX_SIM_TIME 1000 // Number of clk edges.
 #define RESET_DEASSERT 2  // Clk edge number to deassert arst.
 #define RESET_ASSERT 5    // Clk edge number to assert arst.
+#define GRID_WIDTH 4      // Number of routers along one dimension of the grid.
 
 vluint64_t sim_time = 0;
 vluint64_t posedge_cnt = 0;
@@ -30,6 +31,48 @@ void dut_reset(Vnoc *dut) {
       dut->i_niToRouter[i] = 0;
     }
   }
+}
+
+// Each router input packet `i_niToRouter` is 73 bits wide.
+// For a grid width of 4, there are 16 routers, so the total input bus width is
+// 73*16 = 1168 bits. This is represented as an array of 37 elements where each
+// element is 32 bits wide (37*32 = 1184 bits).
+// So each router input packet spans across 2 elements in the array (64 bits)
+// with 9 bits in the third element.
+// See, `./obj_dir/Vnoc.h`, VL_INW(i_niToRouter,1167,0,37).
+void writePacketToRandomRouter(Vnoc *dut, int row, int col, int destination_row, int destination_col, uint64_t payload) {
+
+  const int BITS_PER_PACKET = 73;
+  const int BITS_PER_ELEMENT = 32;
+
+  // Construct 73-bit packet: payload(69)|destination_row(2)|destination_col(2)
+  // Note: Using only lower 64 bits of the 69-bit payload for simplicity.
+  // 0x3ULL is a bitwise mask that extracts only the lowest 2 bits, the ULL
+  // suffix ensures it is treated as an unsigned long long literal.
+  uint64_t packet_low = (destination_col & 0x3ULL) |
+                        ((destination_row & 0x3ULL) << 2) |
+                        ((payload & 0xFFFFFFFFFFFFFFFULL) << 4);
+  // Upper 9 bits (4 from payload shift + 5 more)
+  uint16_t packet_high = (payload >> 60) & 0x1FF;
+
+  int router_id = row * GRID_WIDTH + col;
+  int start_bit = router_id * BITS_PER_PACKET;
+
+  int element_index = start_bit / BITS_PER_ELEMENT;
+  int bit_offset = start_bit % BITS_PER_ELEMENT;
+
+  // Write lower 32 bits of the packet
+  dut->i_niToRouter[element_index] |= (packet_low & 0xFFFFFFFF) << bit_offset;
+
+  // Write next 32 bits of the packet
+  dut->i_niToRouter[element_index + 1] |=
+      ((packet_low >> 32) & 0xFFFFFFFF) << bit_offset;
+
+  // Write remaining 9 bits from packet_high into third element
+  // packet_high continues at the same bit_offset in element[2] as packet_low
+  // in element[0]
+  dut->i_niToRouter[element_index + 2] |=
+      ((uint64_t)packet_high) << bit_offset;
 }
 
 int main(int argc, char **argv, char **env) {
@@ -57,7 +100,22 @@ int main(int argc, char **argv, char **env) {
       posedge_cnt++;
 
       if (sim_time > RESET_ASSERT+1) {
-        dut->i_niToRouter[0] = 0x04;
+        // send a packet to a random router every 10 posedge clk
+        if (posedge_cnt % 10 == 0) {
+          // int rand_row = rand() % GRID_WIDTH;
+          // int rand_col = rand() % GRID_WIDTH;
+          // uint64_t rand_payload = ((uint64_t)rand() << 32) | rand();
+          uint64_t rand_payload = 0xDEADBEEFCAFEBABE;
+
+          writePacketToRandomRouter(dut, 0, 0, 2, 0, rand_payload);
+
+            std::cout << "Time: " << sim_time
+                << " Sent packet from router (" << 0
+                << "," << 0 << ") to router (" << 2
+                << "," << 0 << ") with payload: 0x"
+                << std::hex << std::setw(16) << std::setfill('0')
+                << rand_payload << std::dec << std::endl;
+        }
       }
     }
 
