@@ -102,17 +102,16 @@ int main(int argc, char **argv, char **env) {
       if (sim_time > RESET_ASSERT+1) {
         // send a packet to a random router every 10 posedge clk
         if (posedge_cnt % 10 == 0) {
-          // int rand_row = rand() % GRID_WIDTH;
-          // int rand_col = rand() % GRID_WIDTH;
-          // uint64_t rand_payload = ((uint64_t)rand() << 32) | rand();
-          uint64_t rand_payload = 0xDEADBEEFCAFEBABE;
+          int rand_row = rand() % GRID_WIDTH;
+          int rand_col = rand() % GRID_WIDTH;
+          uint64_t rand_payload = ((uint64_t)rand() << 32) | rand();
 
-          writePacketToRandomRouter(dut, 0, 0, 2, 0, rand_payload);
+          writePacketToRandomRouter(dut, 0, 0, rand_row, rand_col, rand_payload);
 
             std::cout << "Time: " << sim_time
                 << " Sent packet from router (" << 0
-                << "," << 0 << ") to router (" << 2
-                << "," << 0 << ") with payload: 0x"
+                << "," << 0 << ") to router (" << rand_row
+                << "," << rand_col << ") with payload: 0x"
                 << std::hex << std::setw(16) << std::setfill('0')
                 << rand_payload << std::dec << std::endl;
         }
