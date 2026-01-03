@@ -1,7 +1,10 @@
 # `make all` OR `make verilate` -> `make build` -> `make sim` -> `make waves`
+# TODO: Modify RTL to take into account parameterization of GRID_WIDTH which
+# results to different row and column bit widths.
 
 TOP_MODULE=noc
 RTL_PATH=../rtl
+GRID_WIDTH ?= 4
 
 .PHONY: all
 all: clean verilate build sim waves
@@ -35,7 +38,8 @@ waveform.vcd: ./obj_dir/V$(TOP_MODULE)
 	@echo
 	@echo "### VERILATING ###"
 	verilator -Wall --trace --x-assign unique --x-initial unique -cc \
-	-f $(TOP_MODULE).f --top-module $(TOP_MODULE) --exe tb_$(TOP_MODULE).cpp
+	-f $(TOP_MODULE).f --top-module $(TOP_MODULE) --exe tb_$(TOP_MODULE).cpp \
+	-CFLAGS -DGRID_WIDTH=$(GRID_WIDTH) -GGRID_WIDTH=$(GRID_WIDTH)
 	@touch .stamp.verilate
 
 .PHONY:
