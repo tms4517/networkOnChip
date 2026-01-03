@@ -16,6 +16,7 @@
 
 vluint64_t sim_time = 0;
 vluint64_t posedge_cnt = 0;
+vluint64_t packet_sent_cnt = 0;
 
 // Deassert arst_n only on the first clock edge.
 // Note: By default all signals are initialized to 0, so there's no need to
@@ -75,6 +76,46 @@ void writePacketToRandomRouter(Vnoc *dut, int row, int col, int destination_row,
       ((uint64_t)packet_high) << bit_offset;
 }
 
+void readPacketFromDestinationRouter(Vnoc *dut, int row, int col, uint64_t expected_payload) {
+  const int BITS_PER_PACKET = 73;
+  const int BITS_PER_ELEMENT = 32;
+
+  int router_id = row * GRID_WIDTH + col;
+  int start_bit = router_id * BITS_PER_PACKET;
+
+  int element_index = start_bit / BITS_PER_ELEMENT;
+  int bit_offset = start_bit % BITS_PER_ELEMENT;
+
+  // Read lower 32 bits of the output packet
+  uint64_t packet_low = (dut->o_routerToNi[element_index] >> bit_offset) & 0xFFFFFFFF;
+
+  // Read next 32 bits of the output packet
+  packet_low |= ((uint64_t)(dut->o_routerToNi[element_index + 1] >> bit_offset) & 0xFFFFFFFF) << 32;
+
+  // Read remaining 9 bits from third element
+  uint16_t packet_high = (dut->o_routerToNi[element_index + 2] >> bit_offset) & 0x1FF;
+
+  // Reconstruct full payload from received packet
+  uint64_t received_payload = ((uint64_t)packet_high << 60) | (packet_low >> 4);
+
+  // Check if the received payload matches the expected payload
+  if (received_payload == expected_payload) {
+    std::cout << "Time: " << sim_time
+              << " Received expected packet at router (" << row
+              << "," << col << ") with payload: 0x"
+              << std::hex << std::setw(16) << std::setfill('0')
+              << received_payload << std::dec << std::endl;
+  } else {
+    std::cout << "Time: " << sim_time
+              << " ERROR: Mismatched packet at router (" << row
+              << "," << col << "). Expected payload: 0x"
+              << std::hex << std::setw(16) << std::setfill('0')
+              << expected_payload << ", but received: 0x"
+              << std::setw(16) << std::setfill('0')
+              << received_payload << std::dec << std::endl;
+  }
+}
+
 int main(int argc, char **argv, char **env) {
   srand(time(NULL));
   Verilated::commandArgs(argc, argv);
@@ -100,21 +141,34 @@ int main(int argc, char **argv, char **env) {
       posedge_cnt++;
 
       if (sim_time > RESET_ASSERT+1) {
+        int rand_row, rand_col, rand_destination_row, rand_destination_col;
+        uint64_t rand_payload;
         // send a packet to a random router every 10 posedge clk
         if (posedge_cnt % 10 == 0) {
-          int rand_row = rand() % GRID_WIDTH;
-          int rand_col = rand() % GRID_WIDTH;
-          int rand_destination_row = rand() % GRID_WIDTH;
-          int rand_destination_col = rand() % GRID_WIDTH;
-          uint64_t rand_payload = ((uint64_t)rand() << 32) | rand();
+          rand_row = rand() % GRID_WIDTH;
+          rand_col = rand() % GRID_WIDTH;
+          rand_destination_row = rand() % GRID_WIDTH;
+          rand_destination_col = rand() % GRID_WIDTH;
+          rand_payload = ((uint64_t)rand() << 32) | rand();
 
           writePacketToRandomRouter(dut, rand_row, rand_col, rand_destination_row, rand_destination_col, rand_payload);
-            std::cout << "Time: " << sim_time
-                << " Sent packet from router (" << rand_row
-                << "," << rand_col << ") to router (" << rand_destination_row
-                << "," << rand_destination_col << ") with payload: 0x"
-                << std::hex << std::setw(16) << std::setfill('0')
-                << rand_payload << std::dec << std::endl;
+
+          // Record the clock cycle edge count when the packet was sent
+          packet_sent_cnt = posedge_cnt;
+
+        std::cout << "Time: " << sim_time
+                  << " Sent packet from router (" << rand_row
+                  << "," << rand_col << ") to router (" << rand_destination_row
+                  << "," << rand_destination_col << ") with payload: 0x"
+                  << std::hex << std::setw(16) << std::setfill('0')
+                  << rand_payload << std::dec << std::endl;
+        }
+
+        // After 8 clock cycles, read back the packet from the destination
+        // router to verify it was received correctly.
+        if (posedge_cnt == (packet_sent_cnt + (GRID_WIDTH * 2)) &&
+            packet_sent_cnt != 0) {
+          readPacketFromDestinationRouter(dut, rand_destination_row, rand_destination_col, rand_payload);
         }
       }
     }
