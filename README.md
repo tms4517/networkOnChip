@@ -114,8 +114,6 @@ The main simulation loop implements the following test pattern:
 
 ```bash
 cd tb
-make          # Compile testbench with Verilator
-./obj_dir/Vnoc  # Run simulation
-gtkwave waveform.vcd  # View waveforms
+make
 ```
 
