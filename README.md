@@ -13,7 +13,6 @@ Here is a compilation of resources that helped me gain a better understanding.
 3. [Lec 95 - NoC - routing](https://youtu.be/wmqrgNKJrro?si=NOxIGlCZCNCAop3I)
 4. [Lec 96 - NoC - switching and flow control ](https://youtu.be/Qq6C0DkklgU?si=7plMJajoXen2zAl9)
 
-
 **Papers:**
 
 (See `papers/`)
@@ -49,6 +48,8 @@ Each router implements deterministic **XY routing**:
 3. **Local delivery:** When router coordinates match the destination, the packet is forwarded to the local NI
 
 This simple address-based routing eliminates the need for routing tables.
+
+## RTL
 
 ### Module Hierarchy
 
