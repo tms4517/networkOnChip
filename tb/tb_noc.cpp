@@ -21,10 +21,10 @@ vluint64_t packet_sent_cnt = 0;
 // Deassert arst_n only on the first clock edge.
 // Note: By default all signals are initialized to 0, so there's no need to
 // drive the other inputs to '0.
-void dut_reset(Vnoc *dut) {
+void dut_reset(Vnoc *dut, bool do_reset) {
   dut->i_arst_n = 1;
 
-  if ((sim_time > RESET_DEASSERT+1) && (sim_time < RESET_ASSERT+1)) {
+  if (do_reset || (sim_time > RESET_DEASSERT+1) && (sim_time < RESET_ASSERT+1)) {
     dut->i_arst_n = 0;
 
     // Clear all elements
@@ -122,8 +122,12 @@ void readPacketFromDestinationRouter(Vnoc *dut, int row, int col, uint64_t expec
   }
   packet_low |= upper_32 << 32;
 
-  // Read remaining 9 bits from packet_high
+  // Read remaining 9 bits from packet_high (starting at bit 64 of the packet)
   uint16_t packet_high = (dut->o_routerToNi[element_index + 2] >> bit_offset) & 0x1FF;
+  // If bit_offset > 23, packet_high spans into element_index + 3
+  if (bit_offset > 23) {
+    packet_high |= (dut->o_routerToNi[element_index + 3] & ((1ULL << (bit_offset - 23)) - 1)) << (32 - bit_offset);
+  }
 
   // Reconstruct full payload from received packet (strip off routing bits)
   uint64_t received_payload = ((uint64_t)packet_high << 60) | (packet_low >> 4);
@@ -136,13 +140,14 @@ void readPacketFromDestinationRouter(Vnoc *dut, int row, int col, uint64_t expec
               << std::hex << std::setw(16) << std::setfill('0')
               << received_payload << std::dec << std::endl;
   } else {
-    std::cout << "Time: " << sim_time
+    std::cerr << "Time: " << sim_time
               << " ERROR: Mismatched packet at router (" << row
               << "," << col << "). Expected payload: 0x"
               << std::hex << std::setw(16) << std::setfill('0')
               << expected_payload << ", but received: 0x"
               << std::setw(16) << std::setfill('0')
               << received_payload << std::dec << std::endl;
+    exit(EXIT_FAILURE);
   }
 }
 
@@ -161,7 +166,7 @@ int main(int argc, char **argv, char **env) {
   // }}} Set-up waveform dumping.
 
   while (sim_time < MAX_SIM_TIME) {
-    dut_reset(dut);
+    dut_reset(dut, false);
 
     dut->i_clk ^= 1; // Toggle clk to create pos and neg edge.
 
@@ -192,6 +197,10 @@ int main(int argc, char **argv, char **env) {
         if (posedge_cnt == (packet_sent_cnt + (GRID_WIDTH * 2)) &&
             packet_sent_cnt != 0) {
           readPacketFromDestinationRouter(dut, rand_destination_row, rand_destination_col, rand_payload);
+
+          // TODO: Investigate how to avoid needing to flush RTL after every
+          // transaction.
+          dut_reset(dut, true);
         }
       }
     }
