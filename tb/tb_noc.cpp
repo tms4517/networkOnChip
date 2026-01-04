@@ -24,7 +24,8 @@ vluint64_t packet_sent_cnt = 0;
 void dut_reset(Vnoc *dut, bool do_reset) {
   dut->i_arst_n = 1;
 
-  if (do_reset || (sim_time > RESET_DEASSERT+1) && (sim_time < RESET_ASSERT+1)) {
+  if (do_reset ||
+      (sim_time > RESET_DEASSERT + 1) && (sim_time < RESET_ASSERT + 1)) {
     dut->i_arst_n = 0;
 
     // Clear all elements
@@ -41,7 +42,8 @@ void dut_reset(Vnoc *dut, bool do_reset) {
 // So each router input packet spans across 2 elements in the array (64 bits)
 // with 9 bits in the third element.
 // See, `./obj_dir/Vnoc.h`, VL_INW(i_niToRouter,1167,0,37).
-void writePacketToRandomRouter(Vnoc *dut, int row, int col, int destination_row, int destination_col, uint64_t payload) {
+void writePacketToRandomRouter(Vnoc *dut, int row, int col, int destination_row,
+                               int destination_col, uint64_t payload) {
 
   const int BITS_PER_PACKET = 73;
   const int BITS_PER_ELEMENT = 32;
@@ -80,20 +82,21 @@ void writePacketToRandomRouter(Vnoc *dut, int row, int col, int destination_row,
 
   // Write remaining 9 bits from packet_high
   dut->i_niToRouter[element_index + 2] |= ((uint64_t)packet_high) << bit_offset;
-  // Handle overflow to next element if needed (only if bit_offset > 23, since packet_high is 9 bits)
+  // Handle overflow to next element if needed (only if bit_offset > 23, since
+  // packet_high is 9 bits)
   if (bit_offset > 23) {
     dut->i_niToRouter[element_index + 3] |= packet_high >> (32 - bit_offset);
   }
 
-  std::cout << "Time: " << sim_time
-            << " Sent packet from router (" << row
-            << "," << col << ") to router (" << destination_row
-            << "," << destination_col << ") with payload: 0x"
-            << std::hex << std::setw(16) << std::setfill('0')
-            << payload << std::dec << std::endl;
+  std::cout << "Time: " << sim_time << " Sent packet from router (" << row
+            << "," << col << ") to router (" << destination_row << ","
+            << destination_col << ") with payload: 0x" << std::hex
+            << std::setw(16) << std::setfill('0') << payload << std::dec
+            << std::endl;
 }
 
-void readPacketFromDestinationRouter(Vnoc *dut, int row, int col, uint64_t expected_payload) {
+void readPacketFromDestinationRouter(Vnoc *dut, int row, int col,
+                                     uint64_t expected_payload) {
   const int BITS_PER_PACKET = 73;
   const int BITS_PER_ELEMENT = 32;
 
@@ -112,21 +115,29 @@ void readPacketFromDestinationRouter(Vnoc *dut, int row, int col, uint64_t expec
 
   // Get remaining bits from element_index + 1 that belong to lower 32 bits
   if (bit_offset > 0) {
-    packet_low |= ((uint64_t)(dut->o_routerToNi[element_index + 1]) & ((1ULL << bit_offset) - 1)) << (32 - bit_offset);
+    packet_low |= ((uint64_t)(dut->o_routerToNi[element_index + 1]) &
+                   ((1ULL << bit_offset) - 1))
+                  << (32 - bit_offset);
   }
 
   // Get bits 63:32 from element_index + 1 and element_index + 2
-  uint64_t upper_32 = (uint64_t)(dut->o_routerToNi[element_index + 1]) >> bit_offset;
+  uint64_t upper_32 =
+      (uint64_t)(dut->o_routerToNi[element_index + 1]) >> bit_offset;
   if (bit_offset > 0) {
-    upper_32 |= ((uint64_t)(dut->o_routerToNi[element_index + 2]) & ((1ULL << bit_offset) - 1)) << (32 - bit_offset);
+    upper_32 |= ((uint64_t)(dut->o_routerToNi[element_index + 2]) &
+                 ((1ULL << bit_offset) - 1))
+                << (32 - bit_offset);
   }
   packet_low |= upper_32 << 32;
 
   // Read remaining 9 bits from packet_high (starting at bit 64 of the packet)
-  uint16_t packet_high = (dut->o_routerToNi[element_index + 2] >> bit_offset) & 0x1FF;
+  uint16_t packet_high =
+      (dut->o_routerToNi[element_index + 2] >> bit_offset) & 0x1FF;
   // If bit_offset > 23, packet_high spans into element_index + 3
   if (bit_offset > 23) {
-    packet_high |= (dut->o_routerToNi[element_index + 3] & ((1ULL << (bit_offset - 23)) - 1)) << (32 - bit_offset);
+    packet_high |= (dut->o_routerToNi[element_index + 3] &
+                    ((1ULL << (bit_offset - 23)) - 1))
+                   << (32 - bit_offset);
   }
 
   // Reconstruct full payload from received packet (strip off routing bits)
@@ -134,18 +145,15 @@ void readPacketFromDestinationRouter(Vnoc *dut, int row, int col, uint64_t expec
 
   // Check if the received payload matches the expected payload
   if (received_payload == expected_payload) {
-    std::cout << "Time: " << sim_time
-              << " Received expected packet at router (" << row
-              << "," << col << ") with payload: 0x"
-              << std::hex << std::setw(16) << std::setfill('0')
-              << received_payload << std::dec << std::endl;
+    std::cout << "Time: " << sim_time << " Received expected packet at router ("
+              << row << "," << col << ") with payload: 0x" << std::hex
+              << std::setw(16) << std::setfill('0') << received_payload
+              << std::dec << std::endl;
   } else {
-    std::cerr << "Time: " << sim_time
-              << " ERROR: Mismatched packet at router (" << row
-              << "," << col << "). Expected payload: 0x"
-              << std::hex << std::setw(16) << std::setfill('0')
-              << expected_payload << ", but received: 0x"
-              << std::setw(16) << std::setfill('0')
+    std::cerr << "Time: " << sim_time << " ERROR: Mismatched packet at router ("
+              << row << "," << col << "). Expected payload: 0x" << std::hex
+              << std::setw(16) << std::setfill('0') << expected_payload
+              << ", but received: 0x" << std::setw(16) << std::setfill('0')
               << received_payload << std::dec << std::endl;
     exit(EXIT_FAILURE);
   }
@@ -175,7 +183,7 @@ int main(int argc, char **argv, char **env) {
     if (dut->i_clk == 1) {
       posedge_cnt++;
 
-      if (sim_time > RESET_ASSERT+1) {
+      if (sim_time > RESET_ASSERT + 1) {
         int rand_row, rand_col, rand_destination_row, rand_destination_col;
         uint64_t rand_payload;
         // send a packet to a random router every 10 posedge clk
@@ -186,7 +194,9 @@ int main(int argc, char **argv, char **env) {
           rand_destination_col = rand() % GRID_WIDTH;
           rand_payload = ((uint64_t)rand() << 32) | rand();
 
-          writePacketToRandomRouter(dut, rand_row, rand_col, rand_destination_row, rand_destination_col, rand_payload);
+          writePacketToRandomRouter(dut, rand_row, rand_col,
+                                    rand_destination_row, rand_destination_col,
+                                    rand_payload);
 
           // Record the clock cycle edge count when the packet was sent
           packet_sent_cnt = posedge_cnt;
@@ -196,7 +206,8 @@ int main(int argc, char **argv, char **env) {
         // router to verify it was received correctly.
         if (posedge_cnt == (packet_sent_cnt + (GRID_WIDTH * 2)) &&
             packet_sent_cnt != 0) {
-          readPacketFromDestinationRouter(dut, rand_destination_row, rand_destination_col, rand_payload);
+          readPacketFromDestinationRouter(dut, rand_destination_row,
+                                          rand_destination_col, rand_payload);
 
           // TODO: Investigate how to avoid needing to flush RTL after every
           // transaction.
