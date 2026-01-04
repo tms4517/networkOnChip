@@ -57,3 +57,65 @@ This simple address-based routing eliminates the need for routing tables.
 - **[mesh.sv](rtl/mesh.sv):** Interconnects routers in a 2D grid, handling all router-to-router connections and edge router boundary conditions
 - **[router.sv](rtl/router.sv):** Individual router implementing XY routing logic with 10 ports (I/O from 4 neighbors + 2 local NI).
 - **[pa_noc.sv](rtl/pa_noc.sv):** Package containing parameter definitions and packet format constants.
+
+## Testbench
+
+### Overview
+
+[tb_noc.cpp](tb/tb_noc.cpp) is a Verilator-based C++ testbench that verifies the NoC functionality by sending random packets between routers and checking they arrive correctly at their destinations.
+
+### Key Components
+
+**Constants:**
+- `MAX_SIM_TIME`: Total simulation duration (1000 clock edges)
+
+**Functions:**
+
+1. **`writePacketToRandomRouter()`**: Injects test packets into the NoC
+   - Constructs 73-bit packets with destination coordinates and payload
+   - Maps packets to Verilator's 32-bit array representation (`i_niToRouter`)
+   - Each router's packet spans ~2.3 array elements (73 bits across 32-bit boundaries)
+   - Handles bit-level manipulation to correctly position packets in the input array
+   - Logs transmitted packets with source, destination, and payload
+
+2. **`readPacketFromDestinationRouter()`**: Validates received packets
+   - Extracts packets from the output array (`o_routerToNi`)
+   - Reconstructs 73-bit packets from 32-bit array elements
+   - Strips routing information and verifies payload matches expected value
+   - Reports verification success or failure with detailed error messages
+
+### Test Sequence
+
+The main simulation loop implements the following test pattern:
+
+1. **Initialization** (cycles 0-5):
+   - Apply reset for initial cycles
+   - Release reset to allow NoC operation
+
+2. **Random Traffic Generation** (after cycle 5):
+   - Every 10 clock cycles: inject a packet with random source/destination
+   - Source and destination routers chosen uniformly from the 4x4 grid
+   - 64-bit random payload generated for each packet
+
+3. **Packet Verification**:
+   - Wait `GRID_WIDTH * 2` cycles after transmission (8 cycles for 4x4 mesh)
+   - Read packet from destination router
+   - Compare received payload with expected value
+   - Trigger re-reset to flush the design between transactions
+
+### Limitations
+
+- **Sequential Testing**: Only one packet in-flight at a time due to reset-based flushing
+- **Single-Transaction Verification**: Cannot verify concurrent multi-hop routing
+- **Fixed Latency Assumption**: Assumes worst-case latency of `GRID_WIDTH * 2` cycles
+- **Reset Dependency**: Requires design flush between transactions (marked as TODO)
+
+### Building and Running
+
+```bash
+cd tb
+make          # Compile testbench with Verilator
+./obj_dir/Vnoc  # Run simulation
+gtkwave waveform.vcd  # View waveforms
+```
+
