@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+      <polygon points="0 0, 10 5, 0 10" fill="#2d7d2d" />
+    </marker>
+    <marker id="arrowhead-back" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+      <polygon points="10 0, 0 5, 10 10" fill="#2d7d2d" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="400" y="40" text-anchor="middle" font-size="24" font-weight="bold" fill="#000">
+    4×4 Mesh Network-on-Chip Topology
+  </text>
+
+  <!-- Direction Labels -->
+  <text x="400" y="80" text-anchor="middle" font-size="18" font-weight="bold" fill="#c00">North</text>
+  <text x="400" y="655" text-anchor="middle" font-size="18" font-weight="bold" fill="#c00">South</text>
+  <text x="60" y="430" text-anchor="middle" font-size="18" font-weight="bold" fill="#c00" transform="rotate(-90 60 430)">West</text>
+  <text x="740" y="430" text-anchor="middle" font-size="18" font-weight="bold" fill="#c00" transform="rotate(90 740 430)">East</text>
+
+  <!-- Define grid parameters -->
+  <!-- Row 0 -->
+  <!-- Router [0][0] -->
+  <rect x="100" y="120" width="100" height="80" rx="10" fill="#87CEEB" stroke="#00008B" stroke-width="3"/>
+  <text x="150" y="165" text-anchor="middle" font-size="14" font-weight="bold">R[0][0]</text>
+
+  <!-- Router [0][1] -->
+  <rect x="260" y="120" width="100" height="80" rx="10" fill="#87CEEB" stroke="#00008B" stroke-width="3"/>
+  <text x="310" y="165" text-anchor="middle" font-size="14" font-weight="bold">R[0][1]</text>
+
+  <!-- Router [0][2] -->
+  <rect x="420" y="120" width="100" height="80" rx="10" fill="#87CEEB" stroke="#00008B" stroke-width="3"/>
+  <text x="470" y="165" text-anchor="middle" font-size="14" font-weight="bold">R[0][2]</text>
+
+  <!-- Router [0][3] -->
+  <rect x="580" y="120" width="100" height="80" rx="10" fill="#87CEEB" stroke="#00008B" stroke-width="3"/>
+  <text x="630" y="165" text-anchor="middle" font-size="14" font-weight="bold">R[0][3]</text>
+
+  <!-- Row 1 -->
+  <!-- Router [1][0] -->
+  <rect x="100" y="260" width="100" height="80" rx="10" fill="#87CEEB" stroke="#00008B" stroke-width="3"/>
+  <text x="150" y="305" text-anchor="middle" font-size="14" font-weight="bold">R[1][0]</text>
+
+  <!-- Router [1][1] -->
+  <rect x="260" y="260" width="100" height="80" rx="10" fill="#87CEEB" stroke="#00008B" stroke-width="3"/>
+  <text x="310" y="305" text-anchor="middle" font-size="14" font-weight="bold">R[1][1]</text>
+
+  <!-- Router [1][2] -->
+  <rect x="420" y="260" width="100" height="80" rx="10" fill="#87CEEB" stroke="#00008B" stroke-width="3"/>
+  <text x="470" y="305" text-anchor="middle" font-size="14" font-weight="bold">R[1][2]</text>
+
+  <!-- Router [1][3] -->
+  <rect x="580" y="260" width="100" height="80" rx="10" fill="#87CEEB" stroke="#00008B" stroke-width="3"/>
+  <text x="630" y="305" text-anchor="middle" font-size="14" font-weight="bold">R[1][3]</text>
+
+  <!-- Row 2 -->
+  <!-- Router [2][0] -->
+  <rect x="100" y="400" width="100" height="80" rx="10" fill="#87CEEB" stroke="#00008B" stroke-width="3"/>
+  <text x="150" y="445" text-anchor="middle" font-size="14" font-weight="bold">R[2][0]</text>
+
+  <!-- Router [2][1] -->
+  <rect x="260" y="400" width="100" height="80" rx="10" fill="#87CEEB" stroke="#00008B" stroke-width="3"/>
+  <text x="310" y="445" text-anchor="middle" font-size="14" font-weight="bold">R[2][1]</text>
+
+  <!-- Router [2][2] -->
+  <rect x="420" y="400" width="100" height="80" rx="10" fill="#87CEEB" stroke="#00008B" stroke-width="3"/>
+  <text x="470" y="445" text-anchor="middle" font-size="14" font-weight="bold">R[2][2]</text>
+
+  <!-- Router [2][3] -->
+  <rect x="580" y="400" width="100" height="80" rx="10" fill="#87CEEB" stroke="#00008B" stroke-width="3"/>
+  <text x="630" y="445" text-anchor="middle" font-size="14" font-weight="bold">R[2][3]</text>
+
+  <!-- Row 3 -->
+  <!-- Router [3][0] -->
+  <rect x="100" y="540" width="100" height="80" rx="10" fill="#87CEEB" stroke="#00008B" stroke-width="3"/>
+  <text x="150" y="585" text-anchor="middle" font-size="14" font-weight="bold">R[3][0]</text>
+
+  <!-- Router [3][1] -->
+  <rect x="260" y="540" width="100" height="80" rx="10" fill="#87CEEB" stroke="#00008B" stroke-width="3"/>
+  <text x="310" y="585" text-anchor="middle" font-size="14" font-weight="bold">R[3][1]</text>
+
+  <!-- Router [3][2] -->
+  <rect x="420" y="540" width="100" height="80" rx="10" fill="#87CEEB" stroke="#00008B" stroke-width="3"/>
+  <text x="470" y="585" text-anchor="middle" font-size="14" font-weight="bold">R[3][2]</text>
+
+  <!-- Router [3][3] -->
+  <rect x="580" y="540" width="100" height="80" rx="10" fill="#87CEEB" stroke="#00008B" stroke-width="3"/>
+  <text x="630" y="585" text-anchor="middle" font-size="14" font-weight="bold">R[3][3]</text>
+
+  <!-- Horizontal Connections (East-West) -->
+  <!-- Row 0 horizontal connections -->
+  <line x1="200" y1="155" x2="260" y2="155" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="260" y1="165" x2="200" y2="165" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <line x1="360" y1="155" x2="420" y2="155" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="420" y1="165" x2="360" y2="165" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <line x1="520" y1="155" x2="580" y2="155" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="580" y1="165" x2="520" y2="165" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <!-- Row 1 horizontal connections -->
+  <line x1="200" y1="295" x2="260" y2="295" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="260" y1="305" x2="200" y2="305" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <line x1="360" y1="295" x2="420" y2="295" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="420" y1="305" x2="360" y2="305" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <line x1="520" y1="295" x2="580" y2="295" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="580" y1="305" x2="520" y2="305" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <!-- Row 2 horizontal connections -->
+  <line x1="200" y1="435" x2="260" y2="435" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="260" y1="445" x2="200" y2="445" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <line x1="360" y1="435" x2="420" y2="435" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="420" y1="445" x2="360" y2="445" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <line x1="520" y1="435" x2="580" y2="435" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="580" y1="445" x2="520" y2="445" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <!-- Row 3 horizontal connections -->
+  <line x1="200" y1="575" x2="260" y2="575" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="260" y1="585" x2="200" y2="585" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <line x1="360" y1="575" x2="420" y2="575" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="420" y1="585" x2="360" y2="585" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <line x1="520" y1="575" x2="580" y2="575" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="580" y1="585" x2="520" y2="585" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <!-- Vertical Connections (North-South) -->
+  <!-- Column 0 vertical connections -->
+  <line x1="145" y1="200" x2="145" y2="260" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="155" y1="260" x2="155" y2="200" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <line x1="145" y1="340" x2="145" y2="400" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="155" y1="400" x2="155" y2="340" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <line x1="145" y1="480" x2="145" y2="540" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="155" y1="540" x2="155" y2="480" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <!-- Column 1 vertical connections -->
+  <line x1="305" y1="200" x2="305" y2="260" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="315" y1="260" x2="315" y2="200" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <line x1="305" y1="340" x2="305" y2="400" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="315" y1="400" x2="315" y2="340" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <line x1="305" y1="480" x2="305" y2="540" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="315" y1="540" x2="315" y2="480" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <!-- Column 2 vertical connections -->
+  <line x1="465" y1="200" x2="465" y2="260" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="475" y1="260" x2="475" y2="200" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <line x1="465" y1="340" x2="465" y2="400" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="475" y1="400" x2="475" y2="340" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <line x1="465" y1="480" x2="465" y2="540" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="475" y1="540" x2="475" y2="480" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <!-- Column 3 vertical connections -->
+  <line x1="625" y1="200" x2="625" y2="260" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="635" y1="260" x2="635" y2="200" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <line x1="625" y1="340" x2="625" y2="400" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="635" y1="400" x2="635" y2="340" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <line x1="625" y1="480" x2="625" y2="540" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="635" y1="540" x2="635" y2="480" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  <!-- Legend -->
+  <rect x="100" y="680" width="600" height="120" fill="#f5deb3" stroke="#000" stroke-width="2" rx="10"/>
+  <text x="400" y="710" text-anchor="middle" font-size="16" font-weight="bold">Legend</text>
+
+  <rect x="120" y="730" width="60" height="40" rx="5" fill="#87CEEB" stroke="#00008B" stroke-width="2"/>
+  <text x="200" y="755" font-size="14">Router</text>
+
+  <line x1="350" y1="740" x2="410" y2="740" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="410" y1="750" x2="350" y2="750" stroke="#2d7d2d" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <text x="430" y="755" font-size="14">Bidirectional Connection</text>
+
+  <text x="400" y="785" text-anchor="middle" font-size="12" font-style="italic">
+    Each router connects to up to 4 neighbors • Edge routers tie unused ports to '0' • Total: 16 routers
+  </text>
+
+</svg>
