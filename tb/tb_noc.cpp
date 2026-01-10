@@ -9,7 +9,6 @@
 #include <verilated.h>       // Common verilator routines.
 #include <verilated_vcd_c.h> // Write waverforms to a VCD file.
 
-#define MAX_SIM_TIME 1000 // Number of clk edges.
 #define RESET_DEASSERT 2  // Clk edge number to deassert arst.
 #define RESET_ASSERT 5    // Clk edge number to assert arst.
 #define GRID_WIDTH 4      // Number of routers along one dimension of the grid.

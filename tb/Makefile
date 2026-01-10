@@ -5,6 +5,7 @@
 TOP_MODULE=noc
 RTL_PATH=../rtl
 GRID_WIDTH ?= 4
+MAX_SIM_TIME ?= 1000
 
 .PHONY: all
 all: clean verilate build sim waves
@@ -39,7 +40,8 @@ waveform.vcd: ./obj_dir/V$(TOP_MODULE)
 	@echo "### VERILATING ###"
 	verilator -Wall --trace --x-assign unique --x-initial unique -cc \
 	-f $(TOP_MODULE).f --top-module $(TOP_MODULE) --exe tb_$(TOP_MODULE).cpp \
-	-CFLAGS -DGRID_WIDTH=$(GRID_WIDTH) -GGRID_WIDTH=$(GRID_WIDTH)
+	-CFLAGS -DGRID_WIDTH=$(GRID_WIDTH) -CFLAGS -DMAX_SIM_TIME=$(MAX_SIM_TIME) \
+	-GGRID_WIDTH=$(GRID_WIDTH)
 	@touch .stamp.verilate
 
 .PHONY:

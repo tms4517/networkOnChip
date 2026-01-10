@@ -66,9 +66,6 @@ This simple address-based routing eliminates the need for routing tables.
 
 ### Key Components
 
-**Constants:**
-- `MAX_SIM_TIME`: Total simulation duration (1000 clock edges)
-
 **Functions:**
 
 1. **`writePacketToRandomRouter()`**: Injects test packets into the NoC
@@ -112,8 +109,11 @@ The main simulation loop implements the following test pattern:
 
 ### Building and Running
 
+**Variables:**
+- `MAX_SIM_TIME`: Total simulation duration (1000 clock edges)
+
 ```bash
 cd tb
-make
+make all MAX_SIM_TIME=500
 ```
 
