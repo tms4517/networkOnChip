@@ -107,12 +107,36 @@ The main simulation loop implements the following test pattern:
    - Compare received payload with expected value
    - Trigger re-reset to flush the design between transactions
 
+Example:
+```
+Time: 819 Sent packet from router (0,0) to router (1,3) with payload: 0x08a281053b69b74a
+Time: 835 Received expected packet at router (1,3) with payload: 0x08a281053b69b74a
+```
+
+At time 819, the testbench writes to `i_niToRouter` such that router (0,0)'s `i_apbPacket` port receives a 73-bit packet:
+- **Destination row [3:2]:** `0b01` (row 1)
+- **Destination column [1:0]:** `0b11` (column 3)
+- **Payload [72:4]:** `0x08a281053b69b74a`
+
+The packet traverses the mesh via XY routing:
+1. **East:** (0,0) → (0,1) → (0,2) → (0,3)
+2. **South** (1,3)
+
+At time 835 (16 cycles later), the packet arrives at router (1,3) and is verified at the `o_routerToNi` output. This is shown in the waveforms below:
+![waves](docs/waves.png)
+
 ### Limitations
 
-- **Sequential Testing**: Only one packet in-flight at a time due to reset-based flushing
-- **Single-Transaction Verification**: Cannot verify concurrent multi-hop routing
-- **Fixed Latency Assumption**: Assumes worst-case latency of `GRID_WIDTH * 2` cycles
-- **Reset Dependency**: Requires design flush between transactions (marked as TODO)
+As of tag v1.0.0, the purpose of the TB was to test whether the mesh structure
+is functionally correct and packets can be routed.
+
+- **Sequential Testing**: Only one packet in-flight at a time due to reset-based flushing between transactions
+- **No Concurrent Traffic**: Cannot verify simultaneous multi-hop routing or network congestion scenarios
+- **Fixed Latency Assumption**: Assumes worst-case latency of `GRID_WIDTH * 2` cycles for all paths
+- **Reset Dependency**: Design must be flushed between transactions because routers lack internal FIFOs. Without buffering, residual packets from previous transactions can interfere with current traffic (see line 41 of `router.sv`)
+- **Limited Coverage**: Does not test backpressure, flow control, or contention handling
+
+Future RTL improvements should include FIFO-based buffering to enable realistic multi-packet scenarios without artificial resets.
 
 ### Building and Running
 
