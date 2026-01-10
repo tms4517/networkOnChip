@@ -31,8 +31,6 @@ The NoC uses a 2D mesh topology where routers are arranged in a grid pattern. Ea
 a communication protocol that an IP block can understand; the other converts
 a communication protocol from IP blocks to packets that can be routed.
 
-The mesh size is configurable via the `GRID_WIDTH` parameter (minimum 2x2 grid).
-
 ### Packet Format
 
 Packets are 73 bits wide (`APB_PACKET_WIDTH`) with the following structure:
@@ -49,13 +47,22 @@ Each router implements deterministic **XY routing**:
 
 This simple address-based routing eliminates the need for routing tables.
 
+**NOTE: (for tag: v1.0.0)**
+- The `GRID_WIDTH` parameter is fixed to 4. In a future release, the destination
+row and column bit width will be parameterisable to support any mesh
+configuration.
+
 ## RTL
 
 ### Module Hierarchy
 
 - **[noc.sv](rtl/noc.sv):** Top-level module that instantiates the mesh
+
 - **[mesh.sv](rtl/mesh.sv):** Interconnects routers in a 2D grid, handling all router-to-router connections and edge router boundary conditions
+![mesh](docs/mesh_topology.svg)
+
 - **[router.sv](rtl/router.sv):** Individual router implementing XY routing logic with 10 ports (I/O from 4 neighbors + 2 local NI).
+
 - **[pa_noc.sv](rtl/pa_noc.sv):** Package containing parameter definitions and packet format constants.
 
 ## Testbench
