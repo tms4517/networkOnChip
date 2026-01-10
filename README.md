@@ -117,7 +117,7 @@ The main simulation loop implements the following test pattern:
 ### Building and Running
 
 **Variables:**
-- `MAX_SIM_TIME`: Total simulation duration (1000 clock edges)
+- `MAX_SIM_TIME`: Total simulation duration (default 1000 clock edges)
 
 ```bash
 cd tb
