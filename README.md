@@ -62,6 +62,8 @@ configuration.
 ![mesh](docs/mesh_topology.svg)
 
 - **[router.sv](rtl/router.sv):** Individual router implementing XY routing logic with 10 ports (I/O from 4 neighbors + 2 local NI).
+TODO: Replace OR gate with FIFO.
+![mesh](docs/router.svg)
 
 - **[pa_noc.sv](rtl/pa_noc.sv):** Package containing parameter definitions and packet format constants.
 
