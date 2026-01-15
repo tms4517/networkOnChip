@@ -9,9 +9,9 @@
 #include <verilated.h>       // Common verilator routines.
 #include <verilated_vcd_c.h> // Write waverforms to a VCD file.
 
-#define RESET_DEASSERT 2  // Clk edge number to deassert arst.
-#define RESET_ASSERT 5    // Clk edge number to assert arst.
-#define GRID_WIDTH 4      // Number of routers along one dimension of the grid.
+#define RESET_DEASSERT 2 // Clk edge number to deassert arst.
+#define RESET_ASSERT 5   // Clk edge number to assert arst.
+#define GRID_WIDTH 4     // Number of routers along one dimension of the grid.
 
 vluint64_t sim_time = 0;
 vluint64_t posedge_cnt = 0;
@@ -92,11 +92,12 @@ void writePacketToRandomRouter(Vnoc *dut, int row, int col, int destination_row,
     dut->i_niToRouter[element_index + 3] |= packet_high >> (32 - bit_offset);
   }
 
-  std::cout << "Time: " << sim_time << " Sent packet from router (" << row
-            << "," << col << ") to router (" << destination_row << ","
-            << destination_col << ") with payload: 0x" << std::hex
-            << std::setw(16) << std::setfill('0') << payload << std::dec
+  std::cout << "Time: " << sim_time << ", Posedge Cnt: " << posedge_cnt
             << std::endl;
+  std::cout << " Sent packet from router (" << row << "," << col
+            << ") to router (" << destination_row << "," << destination_col
+            << ") with payload: 0x" << std::hex << std::setw(16)
+            << std::setfill('0') << payload << std::dec << std::endl;
 }
 
 void readPacketFromDestinationRouter(Vnoc *dut, int row, int col,
@@ -149,16 +150,21 @@ void readPacketFromDestinationRouter(Vnoc *dut, int row, int col,
 
   // Check if the received payload matches the expected payload
   if (received_payload == expected_payload) {
-    std::cout << "Time: " << sim_time << " Received expected packet at router ("
-              << row << "," << col << ") with payload: 0x" << std::hex
+    std::cout << "Time: " << sim_time << ", Posedge Cnt: " << posedge_cnt
+              << std::endl;
+    std::cout << " Received expected packet at router (" << row << "," << col
+              << ") with payload: 0x" << std::hex << std::setw(16)
+              << std::setfill('0') << received_payload << std::dec << std::endl;
+    std::cout << "******************" << std::endl;
+  } else {
+    std::cout << "Time: " << sim_time << ", Posedge Cnt: " << posedge_cnt
+              << std::endl;
+    std::cout << " ERROR: Mismatched packet at router (" << row << "," << col
+              << "). Expected payload: 0x" << std::hex << std::setw(16)
+              << std::setfill('0') << expected_payload << ", but received: 0x"
               << std::setw(16) << std::setfill('0') << received_payload
               << std::dec << std::endl;
-  } else {
-    std::cerr << "Time: " << sim_time << " ERROR: Mismatched packet at router ("
-              << row << "," << col << "). Expected payload: 0x" << std::hex
-              << std::setw(16) << std::setfill('0') << expected_payload
-              << ", but received: 0x" << std::setw(16) << std::setfill('0')
-              << received_payload << std::dec << std::endl;
+    std::cout << "******************" << std::endl;
     exit(EXIT_FAILURE);
   }
 }
@@ -187,36 +193,29 @@ int main(int argc, char **argv, char **env) {
     if (dut->i_clk == 1) {
       posedge_cnt++;
 
-      if (sim_time > RESET_ASSERT + 1) {
-        int rand_row, rand_col, rand_destination_row, rand_destination_col;
-        uint64_t rand_payload;
-        // send a packet to a random router every 10 posedge clk
-        if (posedge_cnt % 10 == 0) {
-          rand_row = rand() % GRID_WIDTH;
-          rand_col = rand() % GRID_WIDTH;
-          rand_destination_row = rand() % GRID_WIDTH;
-          rand_destination_col = rand() % GRID_WIDTH;
-          rand_payload = ((uint64_t)rand() << 32) | rand();
+      int rand_row, rand_col, rand_destination_row, rand_destination_col;
+      uint64_t rand_payload;
+      // send a packet to a random router every 10 posedge clk
+      if (posedge_cnt % 30 == 0) {
+        rand_row = rand() % GRID_WIDTH;
+        rand_col = rand() % GRID_WIDTH;
+        rand_destination_row = rand() % GRID_WIDTH;
+        rand_destination_col = rand() % GRID_WIDTH;
+        rand_payload = ((uint64_t)rand() << 32) | rand();
 
-          writePacketToRandomRouter(dut, rand_row, rand_col,
-                                    rand_destination_row, rand_destination_col,
-                                    rand_payload);
+        writePacketToRandomRouter(dut, rand_row, rand_col, rand_destination_row,
+                                  rand_destination_col, rand_payload);
 
-          // Record the clock cycle edge count when the packet was sent
-          packet_sent_cnt = posedge_cnt;
-        }
+        // Record the clock cycle edge count when the packet was sent
+        packet_sent_cnt = posedge_cnt;
+      }
 
-        // After 8 clock cycles, read back the packet from the destination
-        // router to verify it was received correctly.
-        if (posedge_cnt == (packet_sent_cnt + (GRID_WIDTH * 2)) &&
-            packet_sent_cnt != 0) {
-          readPacketFromDestinationRouter(dut, rand_destination_row,
-                                          rand_destination_col, rand_payload);
-
-          // TODO: Investigate how to avoid needing to flush RTL after every
-          // transaction.
-          dut_reset(dut, true);
-        }
+      // After 8 clock cycles, read back the packet from the destination
+      // router to verify it was received correctly.
+      if (posedge_cnt == (packet_sent_cnt + (GRID_WIDTH * 2)) &&
+          packet_sent_cnt != 0) {
+        readPacketFromDestinationRouter(dut, rand_destination_row,
+                                        rand_destination_col, rand_payload);
       }
     }
 
