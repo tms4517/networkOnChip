@@ -63,6 +63,11 @@ void writePacketToRandomRouter(Vnoc *dut, int row, int col, int destination_row,
   int element_index = start_bit / BITS_PER_ELEMENT;
   int bit_offset = start_bit % BITS_PER_ELEMENT;
 
+  // Zero out all the other elements, remove previous transactions from routers.
+  for (int i = 0; i < 37; i++) {
+    dut->i_niToRouter[i] = 0;
+  }
+
   // Write lower 32 bits of packet_low
   uint32_t low_32 = packet_low & 0xFFFFFFFF;
   dut->i_niToRouter[element_index] |= low_32 << bit_offset;
