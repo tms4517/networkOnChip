@@ -62,10 +62,15 @@ configuration.
 ![mesh](docs/mesh_topology.svg)
 
 - **[router.sv](rtl/router.sv):** Individual router implementing XY routing logic with 10 ports (I/O from 4 neighbors + 2 local NI).
-TODO: Replace OR gate with FIFO.
 ![mesh](docs/router.svg)
 
 - **[pa_noc.sv](rtl/pa_noc.sv):** Package containing parameter definitions and packet format constants.
+
+### Limitations
+
+**Known Issue:** Inputs from the Network Interface and neighboring routers (North, South, East, and West) are currently combined using simple OR logic. This creates a critical limitation: if a router receives simultaneous inputs from multiple sources, packet data becomes corrupted.
+
+**Future Work:** Replace the OR gate with FIFO buffering and implement backpressure mechanisms to handle simultaneous arrivals correctly.
 
 ## Testbench
 
