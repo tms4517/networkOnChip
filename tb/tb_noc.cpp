@@ -196,7 +196,7 @@ int main(int argc, char **argv, char **env) {
       int rand_row, rand_col, rand_destination_row, rand_destination_col;
       uint64_t rand_payload;
       // send a packet to a random router every 10 posedge clk
-      if (posedge_cnt % 30 == 0) {
+      if (posedge_cnt % 10 == 0) {
         rand_row = rand() % GRID_WIDTH;
         rand_col = rand() % GRID_WIDTH;
         rand_destination_row = rand() % GRID_WIDTH;
