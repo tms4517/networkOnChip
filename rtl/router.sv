@@ -71,10 +71,10 @@ module router
   /* verilator lint_off UNUSED */
   // For now until routing has been tested, we combine packets from NI and
   // neighboring routers.
-  logic [APB_PACKET_WIDTH-1:0] apbPacket;
+  logic [PACKET_WIDTH-1:0] packet;
 
   always_comb
-    apbPacket = i_apbPacket | i_north | i_south | i_east | i_west;
+    packet = i_ni | i_north | i_south | i_east | i_west;
   /* verilator lint_on UNUSED */
 
   // {{{ Decode destination coordinates from incoming packet
@@ -82,10 +82,10 @@ module router
   logic [COORD_WIDTH-1:0] destinationRow, destinationCol;
 
   always_comb
-    destinationRow = apbPacket[3:2];
+    destinationRow = packet[3:2];
 
   always_comb
-    destinationCol = apbPacket[1:0];
+    destinationCol = packet[1:0];
   // }}} Decode destination coordinates from incoming packet
 
   // {{{ Router coordinates match destination coordinates
@@ -97,9 +97,9 @@ module router
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
-      o_apbPacket <= '0;
+      o_ni <= '0;
     else
-      o_apbPacket <= isDestination ? apbPacket : '0;
+      o_ni <= isDestination ? packet : '0;
   // }}} Router coordinates match destination coordinates
 
   // {{{ Forward packets to neighboring routers
@@ -119,7 +119,7 @@ module router
   always_comb
     eastPacket = &{!isDestination
                   , destinationCol > ROUTER_COL
-                  } ? apbPacket : '0;
+                  } ? packet : '0;
   /* verilator lint_on CMPCONST */
 
   always_ff @(posedge i_clk or negedge i_arst_n)
@@ -134,7 +134,7 @@ module router
   always_comb
     westPacket = &{!isDestination
                   , destinationCol < ROUTER_COL
-                  } ? apbPacket : '0;
+                  } ? packet : '0;
   /* verilator lint_on UNSIGNED */
 
   always_ff @(posedge i_clk or negedge i_arst_n)
@@ -150,7 +150,7 @@ module router
     southPacket = &{!isDestination
                   , destinationCol == ROUTER_COL
                   , destinationRow > ROUTER_ROW
-                  } ? apbPacket : '0;
+                  } ? packet : '0;
   /* verilator lint_on CMPCONST */
 
   always_ff @(posedge i_clk or negedge i_arst_n)
@@ -166,7 +166,7 @@ module router
     northPacket = &{!isDestination
                   , destinationCol == ROUTER_COL
                   , destinationRow < ROUTER_ROW
-                  } ? apbPacket : '0;
+                  } ? packet : '0;
   /* verilator lint_on UNSIGNED */
   // }}} Forward packets to neighboring routers
 
