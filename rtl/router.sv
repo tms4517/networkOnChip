@@ -10,6 +10,7 @@
 
 module router
 #(parameter int unsigned GRID_WIDTH = 4
+, parameter int unsigned FIFO_ADDRESS_WIDTH = 2
 , parameter bit [$clog2(GRID_WIDTH)-1:0] ROUTER_ROW = 0
 , parameter bit [$clog2(GRID_WIDTH)-1:0] ROUTER_COL = 0
 , localparam int unsigned PACKET_WIDTH = pa_noc::PACKET_WIDTH
@@ -76,6 +77,83 @@ module router
   always_comb
     packet = i_ni | i_north | i_south | i_east | i_west;
   /* verilator lint_on UNUSED */
+
+  // {{{ Buffer inputs
+  // FIFO to buffer incoming packets from NI
+  synchronousFifo
+  #(.DATA_W (PACKET_WIDTH)
+  , .ADDR_W (FIFO_ADDRESS_WIDTH)
+  ) u_niFifo
+  ( .i_clk
+  , .i_arst_n
+  , .i_writeEn   (i_niValid)
+  , .i_readEn    ( /* To be connected to arbiter grant signal */ )
+  , .i_writeData (i_ni)
+  , .o_readData  ( /* To be connected to arbiter input */ )
+  , .o_full      ( /* To be connected to NI backpressure */ )
+  , .o_empty     ( /* To be connected to arbiter empty signal */)
+  );
+
+  // FIFO to buffer incoming packets from NI
+  synchronousFifo
+  #(.DATA_W (PACKET_WIDTH)
+  , .ADDR_W (FIFO_ADDRESS_WIDTH)
+  ) u_northFifo
+  ( .i_clk
+  , .i_arst_n
+  , .i_writeEn   (i_northValid)
+  , .i_readEn    ( /* To be connected to arbiter grant signal */ )
+  , .i_writeData (i_north)
+  , .o_readData  ( /* To be connected to arbiter input */ )
+  , .o_full      ( /* To be connected to NI backpressure */ )
+  , .o_empty     ( /* To be connected to arbiter empty signal */)
+  );
+
+    // FIFO to buffer incoming packets from NI
+  synchronousFifo
+  #(.DATA_W (PACKET_WIDTH)
+  , .ADDR_W (FIFO_ADDRESS_WIDTH)
+  ) u_southFifo
+  ( .i_clk
+  , .i_arst_n
+  , .i_writeEn   (i_southValid)
+  , .i_readEn    ( /* To be connected to arbiter grant signal */ )
+  , .i_writeData (i_south)
+  , .o_readData  ( /* To be connected to arbiter input */ )
+  , .o_full      ( /* To be connected to NI backpressure */ )
+  , .o_empty     ( /* To be connected to arbiter empty signal */)
+  );
+
+    // FIFO to buffer incoming packets from NI
+  synchronousFifo
+  #(.DATA_W (PACKET_WIDTH)
+  , .ADDR_W (FIFO_ADDRESS_WIDTH)
+  ) u_eastFifo
+  ( .i_clk
+  , .i_arst_n
+  , .i_writeEn   (i_eastValid)
+  , .i_readEn    ( /* To be connected to arbiter grant signal */ )
+  , .i_writeData (i_east)
+  , .o_readData  ( /* To be connected to arbiter input */ )
+  , .o_full      ( /* To be connected to NI backpressure */ )
+  , .o_empty     ( /* To be connected to arbiter empty signal */)
+  );
+
+    // FIFO to buffer incoming packets from NI
+  synchronousFifo
+  #(.DATA_W (PACKET_WIDTH)
+  , .ADDR_W (FIFO_ADDRESS_WIDTH)
+  ) u_westFifo
+  ( .i_clk
+  , .i_arst_n
+  , .i_writeEn   (i_westValid)
+  , .i_readEn    ( /* To be connected to arbiter grant signal */ )
+  , .i_writeData (i_west)
+  , .o_readData  ( /* To be connected to arbiter input */ )
+  , .o_full      ( /* To be connected to NI backpressure */ )
+  , .o_empty     ( /* To be connected to arbiter empty signal */)
+  );
+  // }}} Buffer inputs
 
   // {{{ Decode destination coordinates from incoming packet
   localparam int unsigned COORD_WIDTH = $clog2(GRID_WIDTH);
