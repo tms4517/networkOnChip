@@ -17,19 +17,55 @@ module router
 ( input  var logic i_clk
 , input  var logic i_arst_n
 
-// To/from network interfaces
+// From network interface
 , input  var logic [APB_PACKET_WIDTH-1:0] i_apbPacket
-, output var logic [APB_PACKET_WIDTH-1:0] o_apbPacket
+, input  var logic                        i_apbPacketValid
+, output var logic                        o_apbPacketReady
 
-  // To/from neighboring routers
+// To network interface
+, output var logic [APB_PACKET_WIDTH-1:0] o_apbPacket
+, output var logic                        o_apbPacketValid
+, input  var logic                        i_apbPacketReady
+
+// From North neighbouring router
 , input  var logic [APB_PACKET_WIDTH-1:0] i_north
+, input  var logic                        i_northValid
+, output var logic                        o_northReady
+
+// From South neighbouring router
 , input  var logic [APB_PACKET_WIDTH-1:0] i_south
+, input  var logic                        i_southValid
+, output var logic                        o_southReady
+
+// From East neighbouring router
 , input  var logic [APB_PACKET_WIDTH-1:0] i_east
+, input  var logic                        i_eastValid
+, output var logic                        o_eastReady
+
+// From West neighbouring router
 , input  var logic [APB_PACKET_WIDTH-1:0] i_west
+, input  var logic                        i_westValid
+, output var logic                        o_westReady
+
+// To North neighbouring router
 , output var logic [APB_PACKET_WIDTH-1:0] o_north
+, output var logic                        o_northValid
+, input  var logic                        i_northReady
+
+// To South neighbouring router
 , output var logic [APB_PACKET_WIDTH-1:0] o_south
+, output var logic                        o_southValid
+, input  var logic                        i_southReady
+
+// To East neighbouring router
 , output var logic [APB_PACKET_WIDTH-1:0] o_east
+, output var logic                        o_eastValid
+, input  var logic                        i_eastReady
+
+// To West neighbouring router
 , output var logic [APB_PACKET_WIDTH-1:0] o_west
+, output var logic                        o_westValid
+, input  var logic                        i_westReady
 );
 
   /* verilator lint_off UNUSED */
