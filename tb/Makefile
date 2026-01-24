@@ -23,7 +23,7 @@ sim: waveform.vcd
 waves: waveform.vcd
 	@echo
 	@echo "### WAVES ###"
-	gtkwave waveform.vcd
+	gtkwave waveform.vcd &
 
 waveform.vcd: ./obj_dir/V$(TOP_MODULE)
 	@echo
