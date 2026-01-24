@@ -12,60 +12,60 @@ module router
 #(parameter int unsigned GRID_WIDTH = 4
 , parameter bit [$clog2(GRID_WIDTH)-1:0] ROUTER_ROW = 0
 , parameter bit [$clog2(GRID_WIDTH)-1:0] ROUTER_COL = 0
-, localparam int unsigned APB_PACKET_WIDTH = pa_noc::APB_PACKET_WIDTH
+, localparam int unsigned PACKET_WIDTH = pa_noc::PACKET_WIDTH
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n
 
 // From network interface
-, input  var logic [APB_PACKET_WIDTH-1:0] i_apbPacket
-, input  var logic                        i_apbPacketValid
-, output var logic                        o_apbPacketReady
+, input  var logic [PACKET_WIDTH-1:0] i_ni
+, input  var logic                    i_niValid
+, output var logic                    o_niReady
 
 // To network interface
-, output var logic [APB_PACKET_WIDTH-1:0] o_apbPacket
-, output var logic                        o_apbPacketValid
-, input  var logic                        i_apbPacketReady
+, output var logic [PACKET_WIDTH-1:0] o_ni
+, output var logic                    o_niValid
+, input  var logic                    o_niReady
 
 // From North neighbouring router
-, input  var logic [APB_PACKET_WIDTH-1:0] i_north
-, input  var logic                        i_northValid
-, output var logic                        o_northReady
+, input  var logic [PACKET_WIDTH-1:0] i_north
+, input  var logic                    i_northValid
+, output var logic                    o_northReady
 
 // From South neighbouring router
-, input  var logic [APB_PACKET_WIDTH-1:0] i_south
-, input  var logic                        i_southValid
-, output var logic                        o_southReady
+, input  var logic [PACKET_WIDTH-1:0] i_south
+, input  var logic                    i_southValid
+, output var logic                    o_southReady
 
 // From East neighbouring router
-, input  var logic [APB_PACKET_WIDTH-1:0] i_east
-, input  var logic                        i_eastValid
-, output var logic                        o_eastReady
+, input  var logic [PACKET_WIDTH-1:0] i_east
+, input  var logic                    i_eastValid
+, output var logic                    o_eastReady
 
 // From West neighbouring router
-, input  var logic [APB_PACKET_WIDTH-1:0] i_west
-, input  var logic                        i_westValid
-, output var logic                        o_westReady
+, input  var logic [PACKET_WIDTH-1:0] i_west
+, input  var logic                    i_westValid
+, output var logic                    o_westReady
 
 // To North neighbouring router
-, output var logic [APB_PACKET_WIDTH-1:0] o_north
-, output var logic                        o_northValid
-, input  var logic                        i_northReady
+, output var logic [PACKET_WIDTH-1:0] o_north
+, output var logic                    o_northValid
+, input  var logic                    i_northReady
 
 // To South neighbouring router
-, output var logic [APB_PACKET_WIDTH-1:0] o_south
-, output var logic                        o_southValid
-, input  var logic                        i_southReady
+, output var logic [PACKET_WIDTH-1:0] o_south
+, output var logic                    o_southValid
+, input  var logic                    i_southReady
 
 // To East neighbouring router
-, output var logic [APB_PACKET_WIDTH-1:0] o_east
-, output var logic                        o_eastValid
-, input  var logic                        i_eastReady
+, output var logic [PACKET_WIDTH-1:0] o_east
+, output var logic                    o_eastValid
+, input  var logic                    i_eastReady
 
 // To West neighbouring router
-, output var logic [APB_PACKET_WIDTH-1:0] o_west
-, output var logic                        o_westValid
-, input  var logic                        i_westReady
+, output var logic [PACKET_WIDTH-1:0] o_west
+, output var logic                    o_westValid
+, input  var logic                    i_westReady
 );
 
   /* verilator lint_off UNUSED */
@@ -105,7 +105,7 @@ module router
   // {{{ Forward packets to neighboring routers
   // The packet moves horizontally until it reaches the correct column, then
   // moves vertically to the correct row.
-  logic [APB_PACKET_WIDTH-1:0] eastPacket, westPacket, northPacket, southPacket;
+  logic [PACKET_WIDTH-1:0] eastPacket, westPacket, northPacket, southPacket;
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)

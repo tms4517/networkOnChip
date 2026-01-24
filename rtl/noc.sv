@@ -4,13 +4,13 @@
 
 module noc
 #(parameter int unsigned GRID_WIDTH = 4
-, localparam int unsigned APB_PACKET_WIDTH = pa_noc::APB_PACKET_WIDTH
+, localparam int unsigned PACKET_WIDTH = pa_noc::PACKET_WIDTH
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n
 
-, input  var logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][APB_PACKET_WIDTH-1:0] i_niToRouter
-, output var logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][APB_PACKET_WIDTH-1:0] o_routerToNi
+, input  var logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][PACKET_WIDTH-1:0] i_niToRouter
+, output var logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][PACKET_WIDTH-1:0] o_routerToNi
 );
 
   if (GRID_WIDTH < 2) begin: ParamCheck
