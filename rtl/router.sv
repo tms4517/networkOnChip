@@ -265,16 +265,26 @@ module router
 
   // {{{ Router coordinates match destination coordinates
   logic isDestination;
-
-  always_comb
-    isDestination = (destinationRow == ROUTER_ROW)
-                    && (destinationCol == ROUTER_COL);
+  logic niValid;
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
       o_ni <= '0;
     else
-      o_ni <= isDestination ? packet : '0;
+      o_ni <= niValid ? packet : '0;
+
+  always_ff @(posedge i_clk or negedge i_arst_n)
+    if (!i_arst_n)
+      o_niValid <= '0;
+    else
+      o_niValid <= niValid;
+
+  always_comb
+    isDestination = (destinationRow == ROUTER_ROW)
+                    && (destinationCol == ROUTER_COL);
+
+  always_comb
+    niValid = isDestination && packetIsValid;
   // }}} Router coordinates match destination coordinates
 
   // {{{ Forward packets to neighboring routers
