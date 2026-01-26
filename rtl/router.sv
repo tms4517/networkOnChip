@@ -26,7 +26,7 @@ module router
 // To network interface
 , output var logic [PACKET_WIDTH-1:0] o_ni
 , output var logic                    o_niValid
-, input  var logic                    o_niReady
+, input  var logic                    i_niReady
 
 // From North neighbouring router
 , input  var logic [PACKET_WIDTH-1:0] i_north
@@ -69,17 +69,21 @@ module router
 , input  var logic                    i_westReady
 );
 
-  /* verilator lint_off UNUSED */
-  // For now until routing has been tested, we combine packets from NI and
-  // neighboring routers.
-  logic [PACKET_WIDTH-1:0] packet;
-
-  always_comb
-    packet = i_ni | i_north | i_south | i_east | i_west;
-  /* verilator lint_on UNUSED */
-
   // {{{ Buffer inputs
   // FIFO to buffer incoming packets from NI
+  logic niFifoEmpty;
+  logic niFifoFull;
+  logic niFifoHasPacket;
+  logic niFifoReadEn;
+  logic [PACKET_WIDTH-1:0] niPacketFromFifo;
+
+  always_comb
+    niFifoHasPacket = !niFifoEmpty;
+
+  // FIFO has a memory region to store incoming packets from NI.
+  always_comb
+    o_niReady = !niFifoFull;
+
   synchronousFifo
   #(.DATA_W (PACKET_WIDTH)
   , .ADDR_W (FIFO_ADDRESS_WIDTH)
@@ -87,14 +91,26 @@ module router
   ( .i_clk
   , .i_arst_n
   , .i_writeEn   (i_niValid)
-  , .i_readEn    ( /* To be connected to arbiter grant signal */ )
+  , .i_readEn    (niFifoReadEn)
   , .i_writeData (i_ni)
-  , .o_readData  ( /* To be connected to arbiter input */ )
-  , .o_full      ( /* To be connected to NI backpressure */ )
-  , .o_empty     ( /* To be connected to arbiter empty signal */)
+  , .o_readData  (niPacketFromFifo)
+  , .o_full      (niFifoFull)
+  , .o_empty     (niFifoEmpty)
   );
 
-  // FIFO to buffer incoming packets from NI
+  // FIFO to buffer incoming packets from North neighbouring router
+  logic northFifoEmpty;
+  logic northFifoFull;
+  logic northFifoHasPacket;
+  logic northFifoReadEn;
+  logic [PACKET_WIDTH-1:0] northPacketFromFifo;
+
+  always_comb
+    northFifoHasPacket = !northFifoEmpty;
+
+  always_comb
+    o_northReady = !northFifoFull;
+
   synchronousFifo
   #(.DATA_W (PACKET_WIDTH)
   , .ADDR_W (FIFO_ADDRESS_WIDTH)
@@ -102,14 +118,26 @@ module router
   ( .i_clk
   , .i_arst_n
   , .i_writeEn   (i_northValid)
-  , .i_readEn    ( /* To be connected to arbiter grant signal */ )
+  , .i_readEn    (northFifoReadEn)
   , .i_writeData (i_north)
-  , .o_readData  ( /* To be connected to arbiter input */ )
-  , .o_full      ( /* To be connected to NI backpressure */ )
-  , .o_empty     ( /* To be connected to arbiter empty signal */)
+  , .o_readData  (northPacketFromFifo)
+  , .o_full      (northFifoFull)
+  , .o_empty     (northFifoEmpty)
   );
 
-    // FIFO to buffer incoming packets from NI
+  // FIFO to buffer incoming packets from South neighbouring router
+  logic southFifoEmpty;
+  logic southFifoFull;
+  logic southFifoHasPacket;
+  logic southFifoReadEn;
+  logic [PACKET_WIDTH-1:0] southPacketFromFifo;
+
+  always_comb
+    southFifoHasPacket = !southFifoEmpty;
+
+  always_comb
+    o_southReady = !southFifoFull;
+
   synchronousFifo
   #(.DATA_W (PACKET_WIDTH)
   , .ADDR_W (FIFO_ADDRESS_WIDTH)
@@ -117,14 +145,26 @@ module router
   ( .i_clk
   , .i_arst_n
   , .i_writeEn   (i_southValid)
-  , .i_readEn    ( /* To be connected to arbiter grant signal */ )
+  , .i_readEn    (southFifoReadEn)
   , .i_writeData (i_south)
-  , .o_readData  ( /* To be connected to arbiter input */ )
-  , .o_full      ( /* To be connected to NI backpressure */ )
-  , .o_empty     ( /* To be connected to arbiter empty signal */)
+  , .o_readData  (southPacketFromFifo)
+  , .o_full      (southFifoFull)
+  , .o_empty     (southFifoEmpty)
   );
 
-    // FIFO to buffer incoming packets from NI
+  // FIFO to buffer incoming packets from East neighbouring router
+  logic eastFifoEmpty;
+  logic eastFifoFull;
+  logic eastFifoHasPacket;
+  logic eastFifoReadEn;
+  logic [PACKET_WIDTH-1:0] eastPacketFromFifo;
+
+  always_comb
+    eastFifoHasPacket = !eastFifoEmpty;
+
+  always_comb
+    o_eastReady = !eastFifoFull;
+
   synchronousFifo
   #(.DATA_W (PACKET_WIDTH)
   , .ADDR_W (FIFO_ADDRESS_WIDTH)
@@ -132,14 +172,26 @@ module router
   ( .i_clk
   , .i_arst_n
   , .i_writeEn   (i_eastValid)
-  , .i_readEn    ( /* To be connected to arbiter grant signal */ )
+  , .i_readEn    (eastFifoReadEn)
   , .i_writeData (i_east)
-  , .o_readData  ( /* To be connected to arbiter input */ )
-  , .o_full      ( /* To be connected to NI backpressure */ )
-  , .o_empty     ( /* To be connected to arbiter empty signal */)
+  , .o_readData  (eastPacketFromFifo)
+  , .o_full      (eastFifoFull)
+  , .o_empty     (eastFifoEmpty)
   );
 
-    // FIFO to buffer incoming packets from NI
+  // FIFO to buffer incoming packets from West neighbouring router
+  logic westFifoEmpty;
+  logic westFifoFull;
+  logic westFifoHasPacket;
+  logic westFifoReadEn;
+  logic [PACKET_WIDTH-1:0] westPacketFromFifo;
+
+  always_comb
+    westFifoHasPacket = !westFifoEmpty;
+
+  always_comb
+    o_westReady = !westFifoFull;
+
   synchronousFifo
   #(.DATA_W (PACKET_WIDTH)
   , .ADDR_W (FIFO_ADDRESS_WIDTH)
@@ -147,13 +199,58 @@ module router
   ( .i_clk
   , .i_arst_n
   , .i_writeEn   (i_westValid)
-  , .i_readEn    ( /* To be connected to arbiter grant signal */ )
+  , .i_readEn    (westFifoReadEn)
   , .i_writeData (i_west)
-  , .o_readData  ( /* To be connected to arbiter input */ )
-  , .o_full      ( /* To be connected to NI backpressure */ )
-  , .o_empty     ( /* To be connected to arbiter empty signal */)
+  , .o_readData  (westPacketFromFifo)
+  , .o_full      (westFifoFull)
+  , .o_empty     (westFifoEmpty)
   );
   // }}} Buffer inputs
+
+  // {{{ Arbitrate between input FIFOs
+  localparam int unsigned NUM_INPUT_FIFOS = 5;
+
+  logic                                         packetForwarded;
+  logic                                         packetIsValid;
+  logic [PACKET_WIDTH-1:0]                      packet;
+  logic [NUM_INPUT_FIFOS-1:0]                   fifoHasPacket;
+  logic [NUM_INPUT_FIFOS-1:0]                   fifoReadEn;
+  logic [NUM_INPUT_FIFOS-1:0][PACKET_WIDTH-1:0] fifoReadData;
+
+  always_comb
+    fifoHasPacket = { niFifoHasPacket
+                    , northFifoHasPacket
+                    , southFifoHasPacket
+                    , eastFifoHasPacket
+                    , westFifoHasPacket
+                    };
+
+  always_comb
+    fifoReadData =  { niPacketFromFifo
+                    , northPacketFromFifo
+                    , southPacketFromFifo
+                    , eastPacketFromFifo
+                    , westPacketFromFifo
+                    };
+  always_comb
+    { niFifoReadEn
+    , northFifoReadEn
+    , southFifoReadEn
+    , eastFifoReadEn
+    , westFifoReadEn
+    } = fifoReadEn;
+
+  arbiter u_arbiter
+  ( .i_clk
+  , .i_arst_n
+  , .i_fifoHasPacket (fifoHasPacket)
+  , .i_fifoReadData  (fifoReadData)
+  , .i_arbiterReady  (packetForwarded)
+  , .o_fifoReadEn    (fifoReadEn)
+  , .o_packet        (packet)
+  , .o_packetIsValid (packetIsValid)
+  );
+  // }}} Arbitrate between input FIFOs
 
   // {{{ Decode destination coordinates from incoming packet
   localparam int unsigned COORD_WIDTH = $clog2(GRID_WIDTH);
@@ -184,68 +281,125 @@ module router
   // The packet moves horizontally until it reaches the correct column, then
   // moves vertically to the correct row.
   logic [PACKET_WIDTH-1:0] eastPacket, westPacket, northPacket, southPacket;
+  logic                    eastValid, westValid, northValid, southValid;
 
+  // {{{ East output
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
       o_east <= '0;
     else
       o_east <= eastPacket;
 
+  always_comb
+    eastPacket = eastValid ? packet : '0;
+
+  always_ff @(posedge i_clk or negedge i_arst_n)
+    if (!i_arst_n)
+      o_eastValid <= '0;
+    else
+      o_eastValid <= eastValid;
+
   // For edge routers at max column (GRID_WIDTH-1), comparison is always false
   // (optimized away by synthesis).
   /* verilator lint_off CMPCONST */
   always_comb
-    eastPacket = &{!isDestination
-                  , destinationCol > ROUTER_COL
-                  } ? packet : '0;
+    eastValid = &{!isDestination
+                , packetIsValid
+                , destinationCol > ROUTER_COL
+                };
   /* verilator lint_on CMPCONST */
+  // }}} East output
 
+  // {{{ West output
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
       o_west <= '0;
     else
       o_west <= westPacket;
 
+  always_comb
+    westPacket = westValid ? packet : '0;
+
+  always_ff @(posedge i_clk or negedge i_arst_n)
+    if (!i_arst_n)
+      o_westValid <= '0;
+    else
+      o_westValid <= westValid;
+
   // For edge routers at column 0, comparison is always false
   // (optimized away by synthesis).
   /* verilator lint_off UNSIGNED */
   always_comb
-    westPacket = &{!isDestination
-                  , destinationCol < ROUTER_COL
-                  } ? packet : '0;
+    westValid = &{!isDestination
+                , packetIsValid
+                , destinationCol < ROUTER_COL
+                };
   /* verilator lint_on UNSIGNED */
+  // }}} West output
 
+  // {{{ South output
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
       o_south <= '0;
     else
       o_south <= southPacket;
 
+  always_comb
+    southPacket = southValid ? packet : '0;
+
+  always_ff @(posedge i_clk or negedge i_arst_n)
+    if (!i_arst_n)
+      o_southValid <= '0;
+    else
+      o_southValid <= southValid;
+
   // For edge routers at max row (GRID_WIDTH-1), comparison is always false
   // (optimized away by synthesis).
   /* verilator lint_off CMPCONST */
   always_comb
-    southPacket = &{!isDestination
+    southValid =  &{!isDestination
+                  , packetIsValid
                   , destinationCol == ROUTER_COL
                   , destinationRow > ROUTER_ROW
-                  } ? packet : '0;
+                  };
   /* verilator lint_on CMPCONST */
+  // }}} South output
 
+  // {{{ North output
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
       o_north <= '0;
     else
       o_north <= northPacket;
 
+  always_comb
+    northPacket = northValid ? packet : '0;
+
+  always_ff @(posedge i_clk or negedge i_arst_n)
+    if (!i_arst_n)
+      o_northValid <= '0;
+    else
+      o_northValid <= northValid;
+
   // For edge routers at row 0, comparison is always false
   // (optimized away by synthesis).
   /* verilator lint_off UNSIGNED */
   always_comb
-    northPacket = &{!isDestination
+    northValid = &{!isDestination
+                  , packetIsValid
                   , destinationCol == ROUTER_COL
                   , destinationRow < ROUTER_ROW
-                  } ? packet : '0;
+                  };
   /* verilator lint_on UNSIGNED */
+  // }}} North output
+
+  always_comb
+    packetForwarded = |{eastValid && i_eastReady
+                      , westValid && i_westReady
+                      , northValid && i_northReady
+                      , southValid && i_southReady
+                      , isDestination && i_niReady
+                      };
   // }}} Forward packets to neighboring routers
 
 endmodule
