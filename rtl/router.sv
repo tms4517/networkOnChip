@@ -25,11 +25,11 @@
 `default_nettype none
 
 module router
+  import pa_noc::*;
 #(parameter int unsigned GRID_WIDTH = 4
 , parameter int unsigned FIFO_ADDRESS_WIDTH = 2
 , parameter bit [$clog2(GRID_WIDTH)-1:0] ROUTER_ROW = 0
 , parameter bit [$clog2(GRID_WIDTH)-1:0] ROUTER_COL = 0
-, localparam int unsigned PACKET_WIDTH = pa_noc::PACKET_WIDTH
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n
@@ -228,8 +228,6 @@ module router
   // }}} Buffer inputs
 
   // {{{ Arbitrate between input FIFOs
-  localparam int unsigned NUM_INPUT_FIFOS = 5;
-
   logic                                         packetForwarded;
   logic                                         packetIsValid;
   logic [PACKET_WIDTH-1:0]                      packet;

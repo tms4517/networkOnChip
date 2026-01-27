@@ -14,6 +14,8 @@ package pa_noc;
   // |-------------------------------------------------------------------
   localparam int unsigned PACKET_WIDTH = 73;
 
+  localparam int unsigned NUM_INPUT_FIFOS = 5;
+
 endpackage
 
 `resetall
