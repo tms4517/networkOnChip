@@ -235,28 +235,36 @@ module router
   logic [NUM_INPUT_FIFOS-1:0]                   fifoReadEn;
   logic [NUM_INPUT_FIFOS-1:0][PACKET_WIDTH-1:0] fifoReadData;
 
-  always_comb
-    fifoHasPacket = { niFifoHasPacket
-                    , northFifoHasPacket
-                    , southFifoHasPacket
-                    , eastFifoHasPacket
-                    , westFifoHasPacket
-                    };
+  always_comb begin
+    fifoHasPacket[NI] = niFifoHasPacket;
+    fifoHasPacket[NORTH] = northFifoHasPacket;
+    fifoHasPacket[SOUTH] = southFifoHasPacket;
+    fifoHasPacket[EAST] = eastFifoHasPacket;
+    fifoHasPacket[WEST] = westFifoHasPacket;
+  end
+
+  always_comb begin
+    fifoReadData[NI]    = niPacketFromFifo;
+    fifoReadData[NORTH] = northPacketFromFifo;
+    fifoReadData[SOUTH] = southPacketFromFifo;
+    fifoReadData[EAST]  = eastPacketFromFifo;
+    fifoReadData[WEST]  = westPacketFromFifo;
+  end
 
   always_comb
-    fifoReadData =  { niPacketFromFifo
-                    , northPacketFromFifo
-                    , southPacketFromFifo
-                    , eastPacketFromFifo
-                    , westPacketFromFifo
-                    };
+    niFifoReadEn    = fifoReadEn[NI];
+
   always_comb
-    { niFifoReadEn
-    , northFifoReadEn
-    , southFifoReadEn
-    , eastFifoReadEn
-    , westFifoReadEn
-    } = fifoReadEn;
+    northFifoReadEn = fifoReadEn[NORTH];
+
+  always_comb
+    southFifoReadEn = fifoReadEn[SOUTH];
+
+  always_comb
+    eastFifoReadEn  = fifoReadEn[EAST];
+
+  always_comb
+    westFifoReadEn  = fifoReadEn[WEST];
 
   arbiter u_arbiter
   ( .i_clk

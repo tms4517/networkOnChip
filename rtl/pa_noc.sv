@@ -16,6 +16,14 @@ package pa_noc;
 
   localparam int unsigned NUM_INPUT_FIFOS = 5;
 
+  typedef enum bit [2:0]
+  { NI    = 3'b000
+  , NORTH = 3'b001
+  , SOUTH = 3'b010
+  , EAST  = 3'b011
+  , WEST  = 3'b100
+  } ty_DIRECTION;
+
 endpackage
 
 `resetall
