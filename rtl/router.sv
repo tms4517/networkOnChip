@@ -28,8 +28,9 @@ module router
   import pa_noc::*;
 #(parameter int unsigned GRID_WIDTH = 4
 , parameter int unsigned FIFO_ADDRESS_WIDTH = 2
-, parameter bit [$clog2(GRID_WIDTH)-1:0] ROUTER_ROW = 0
-, parameter bit [$clog2(GRID_WIDTH)-1:0] ROUTER_COL = 0
+, localparam int unsigned COORD_WIDTH = $clog2(GRID_WIDTH)
+, parameter bit [COORD_WIDTH-1:0] ROUTER_ROW = 0
+, parameter bit [COORD_WIDTH-1:0] ROUTER_COL = 0
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n
@@ -279,7 +280,6 @@ module router
   // }}} Arbitrate between input FIFOs
 
   // {{{ Decode destination coordinates from incoming packet
-  localparam int unsigned COORD_WIDTH = $clog2(GRID_WIDTH);
   logic [COORD_WIDTH-1:0] destinationRow, destinationCol;
 
   always_comb
