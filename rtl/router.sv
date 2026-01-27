@@ -1,10 +1,26 @@
 // This module implements a simple router for a network-on-chip (NoC).
-// It receives packets from Network Interfaces (NI) and forward them to
-// neighboring routers based on the destination router's coordinates.
+
+// It receives packets from a Network Interface (NI) and neighboring routers
+// if their respective `i_<>Valid` signal is asserted and stores them in FIFOs.
+// The `fifoHasPacket[x]` signal is asserted to indicate to an arbiter that
+// the FIFO has received a packet.
+
+// The arbiter selects one of the input FIFOs that has a packet following a
+// round-robin scheme and outputs the selected packet, a `packetIsValid` signal
+// and asserts the corresponding `fifoReadEn` signal to pop the FIFO.
+
+// The router decodes the packets' destination coordinates and forwards it to a
+// neighboring router based on a basic XY routing algorithm.
 // If the packet's destination matches the current router's coordinates,
 // it forwards the packet to the local NI.
-// The router uses a basic XY routing algorithm to decide which neighbouring
-// router to send the packet to next.
+
+// The forwarding is done by asserting the corresponding `o_<>Valid` signal and
+// placing the packet on the `o_<>` bus. A handshake occurs when the
+// corresponding `i_<>Ready` signal from the neighboring router or NI is also
+// asserted.
+
+// When a packet is forwarded the arbiter is informed via the `packetForwarded`
+// signal so it can select the next packet to forward.
 
 `default_nettype none
 
@@ -70,6 +86,10 @@ module router
 );
 
   // {{{ Buffer inputs
+  // If the FIFO is not full, it asserts the `o_<>Ready` signal to indicate it
+  // can accept incoming packets. A handshake occurs and the FIFO stores the
+  // packet when both `i_<>Valid` and `o_<>Ready` are asserted.
+
   // FIFO to buffer incoming packets from NI
   logic niFifoEmpty;
   logic niFifoFull;
