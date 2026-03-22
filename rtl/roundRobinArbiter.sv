@@ -1,3 +1,13 @@
+// Round-robin arbiter for NUM_CLIENTS requesters.
+
+// Maintains a rotating priority mask so that after a client is granted and
+// acknowledged (i_ack), the next-highest-numbered client becomes highest
+// priority, wrapping around from the last client back to client 0.
+// If no masked request is active, the arbiter falls back to raw (unmasked)
+// priority order to avoid deadlock. The grant is held stable until the
+// downstream consumer asserts i_ack, preventing starvation of un-serviced
+// clients.
+
 `default_nettype none
 
 module roundRobinArbiter
