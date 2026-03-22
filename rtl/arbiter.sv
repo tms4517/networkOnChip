@@ -25,9 +25,7 @@ module arbiter
 
   logic [NUM_INPUT_FIFOS-1:0] grant;
 
-  roundRobinArbiter
-  #(.NUM_CLIENTS (NUM_INPUT_FIFOS)
-  ) u_roundRobinArbiter
+  roundRobinArbiter u_roundRobinArbiter
   ( .i_clk
   , .i_rst_n   (i_arst_n)
   , .i_request (i_fifoHasPacket)
