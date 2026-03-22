@@ -36,7 +36,8 @@ module arbiter
   logic [NUM_INPUT_FIFOS-1:0][PACKET_WIDTH-1:0] packetSource;
 
   for (genvar i = 0; i < NUM_INPUT_FIFOS; i++) begin: genPacketMux
-    packetSource[i] = grant[i] ? i_fifoReadData[i] : '0;
+    always_comb
+      packetSource[i] = grant[i] ? i_fifoReadData[i] : '0;
   end: genPacketMux
 
   always_comb
