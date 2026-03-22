@@ -280,13 +280,15 @@ module router
   // }}} Arbitrate between input FIFOs
 
   // {{{ Decode destination coordinates from incoming packet
+  // Destination column occupies packet[COORD_WIDTH-1:0], destination row
+  // occupies packet[2*COORD_WIDTH-1:COORD_WIDTH].
   logic [COORD_WIDTH-1:0] destinationRow, destinationCol;
 
   always_comb
-    destinationRow = packet[3:2];
+    destinationRow = packet[2*COORD_WIDTH-1 -: COORD_WIDTH];
 
   always_comb
-    destinationCol = packet[1:0];
+    destinationCol = packet[COORD_WIDTH-1 -: COORD_WIDTH];
   // }}} Decode destination coordinates from incoming packet
 
   // {{{ Router coordinates match destination coordinates
