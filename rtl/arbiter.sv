@@ -41,7 +41,11 @@ module arbiter
   end: genPacketMux
 
   always_comb
-    o_packet = |packetSource;
+    o_packet =  packetSource[0]
+              | packetSource[1]
+              | packetSource[2]
+              | packetSource[3]
+              | packetSource[4];
 
   always_comb
     o_packetIsValid = |(grant & i_fifoHasPacket);

@@ -71,6 +71,8 @@ module roundRobinArbiter
       grant_q <= ty_CLIENT_GRANTED'('0);
     else if (i_ack || (grant_q == ty_CLIENT_GRANTED'('0)))
       grant_q <= grant_d;
+    else
+      grant_q <= grant_q;
 
   // Determine if the current mask allows any of the requesting clients to be
   // granted. If there are no requests that match the mask, grant based on the

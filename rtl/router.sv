@@ -236,21 +236,35 @@ module router
   logic [NUM_INPUT_FIFOS-1:0]                   fifoReadEn;
   logic [NUM_INPUT_FIFOS-1:0][PACKET_WIDTH-1:0] fifoReadData;
 
-  always_comb begin
+  always_comb
     fifoHasPacket[NI] = niFifoHasPacket;
-    fifoHasPacket[NORTH] = northFifoHasPacket;
-    fifoHasPacket[SOUTH] = southFifoHasPacket;
-    fifoHasPacket[EAST] = eastFifoHasPacket;
-    fifoHasPacket[WEST] = westFifoHasPacket;
-  end
 
-  always_comb begin
-    fifoReadData[NI]    = niPacketFromFifo;
+  always_comb
+    fifoHasPacket[NORTH] = northFifoHasPacket;
+
+  always_comb
+    fifoHasPacket[SOUTH] = southFifoHasPacket;
+
+  always_comb
+    fifoHasPacket[EAST] = eastFifoHasPacket;
+
+  always_comb
+    fifoHasPacket[WEST] = westFifoHasPacket;
+
+  always_comb
+    fifoReadData[NI] = niPacketFromFifo;
+
+  always_comb
     fifoReadData[NORTH] = northPacketFromFifo;
+
+  always_comb
     fifoReadData[SOUTH] = southPacketFromFifo;
-    fifoReadData[EAST]  = eastPacketFromFifo;
-    fifoReadData[WEST]  = westPacketFromFifo;
-  end
+
+  always_comb
+    fifoReadData[EAST] = eastPacketFromFifo;
+
+  always_comb
+    fifoReadData[WEST] = westPacketFromFifo;
 
   always_comb
     niFifoReadEn    = fifoReadEn[NI];
