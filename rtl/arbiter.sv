@@ -31,6 +31,7 @@ module arbiter
   ( .i_clk
   , .i_rst_n   (i_arst_n)
   , .i_request (i_fifoHasPacket)
+  , .i_ack     (i_arbiterReady && o_packetIsValid)
   , .o_grant   (grant)
   );
 

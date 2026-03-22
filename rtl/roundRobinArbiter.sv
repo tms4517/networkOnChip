@@ -6,6 +6,10 @@ module roundRobinArbiter
 , input  var logic i_rst_n
 
 , input  var logic [NUM_CLIENTS-1:0] i_request
+// Acknowledgement from downstream that the granted packet has been consumed.
+// The arbiter holds the current grant stable until i_ack is asserted, ensuring
+// that a client is not starved if the router cannot forward its packet.
+, input  var logic                   i_ack
 , output var logic [NUM_CLIENTS-1:0] o_grant
 );
 
@@ -28,13 +32,14 @@ module roundRobinArbiter
   ty_CLIENT_MASK mask_q, mask_d;
   ty_CLIENT_GRANTED grant_q, grant_d;
 
-  // Mask register: tracks which client should be prioritized next, The mask is
-  // updated when a grant is issued, and determines the priority order for the
-  // next arbitration cycle.
+  // Mask register: tracks which client should be prioritized next. The mask is
+  // updated only when a grant is issued AND the downstream acknowledges
+  // consumption (i_ack), ensuring the arbiter holds the current grant stable
+  // until the packet is actually forwarded.
   always_ff @(posedge i_clk, negedge i_rst_n)
     if (!i_rst_n)
       mask_q <= CLIENT_0_MASK;
-    else if ((grant_d != 0))
+    else if ((grant_d != 0) && i_ack)
       mask_q <= mask_d;
     else
       mask_q <= mask_q;
@@ -49,11 +54,12 @@ module roundRobinArbiter
       default: mask_d = mask_q;
     endcase
 
-  // Client granted access.
+  // Client granted access. Only advance to the next grant when the current one
+  // has been acknowledged.
   always_ff @(posedge i_clk, negedge i_rst_n)
     if (!i_rst_n)
       grant_q <= ty_CLIENT_GRANTED'('0);
-    else
+    else if (i_ack || (grant_q == ty_CLIENT_GRANTED'('0)))
       grant_q <= grant_d;
 
   // Determine if the current mask allows any of the requesting clients to be
