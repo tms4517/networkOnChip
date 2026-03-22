@@ -36,9 +36,9 @@ module arbiter
 
   logic [NUM_INPUT_FIFOS-1:0][PACKET_WIDTH-1:0] packetSource;
 
-  for (genvar i = 0; i < NUM_INPUT_FIFOS; i++) begin: connectSouth
+  for (genvar i = 0; i < NUM_INPUT_FIFOS; i++) begin: genPacketMux
     packetSource[i] = grant[i] ? i_fifoReadData[i] : '0;
-  end: connectSouth
+  end: genPacketMux
 
   always_comb
     o_packet = |packetSource;
