@@ -111,7 +111,7 @@ module router
   ) u_niFifo
   ( .i_clk
   , .i_arst_n
-  , .i_writeEn   (i_niValid)
+  , .i_writeEn   (i_niValid && o_niReady)
   , .i_readEn    (niFifoReadEn)
   , .i_writeData (i_ni)
   , .o_readData  (niPacketFromFifo)
@@ -138,7 +138,7 @@ module router
   ) u_northFifo
   ( .i_clk
   , .i_arst_n
-  , .i_writeEn   (i_northValid)
+  , .i_writeEn   (i_northValid && o_northReady)
   , .i_readEn    (northFifoReadEn)
   , .i_writeData (i_north)
   , .o_readData  (northPacketFromFifo)
@@ -165,7 +165,7 @@ module router
   ) u_southFifo
   ( .i_clk
   , .i_arst_n
-  , .i_writeEn   (i_southValid)
+  , .i_writeEn   (i_southValid && o_southReady)
   , .i_readEn    (southFifoReadEn)
   , .i_writeData (i_south)
   , .o_readData  (southPacketFromFifo)
@@ -192,7 +192,7 @@ module router
   ) u_eastFifo
   ( .i_clk
   , .i_arst_n
-  , .i_writeEn   (i_eastValid)
+  , .i_writeEn   (i_eastValid && o_eastReady)
   , .i_readEn    (eastFifoReadEn)
   , .i_writeData (i_east)
   , .o_readData  (eastPacketFromFifo)
@@ -219,7 +219,7 @@ module router
   ) u_westFifo
   ( .i_clk
   , .i_arst_n
-  , .i_writeEn   (i_westValid)
+  , .i_writeEn   (i_westValid && o_westReady)
   , .i_readEn    (westFifoReadEn)
   , .i_writeData (i_west)
   , .o_readData  (westPacketFromFifo)
