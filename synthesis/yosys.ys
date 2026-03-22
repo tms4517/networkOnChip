@@ -1,0 +1,16 @@
+# Yosys synthesis script for NoC
+
+read_slang -F __NOC_ROOT__/rtl/noc.f --top noc
+
+hierarchy -top noc
+
+# Replaces the processes in the design with multiplexers, flip-flops and latches.
+proc;;
+
+# Performs a series of optimizations and cleanups.
+opt;;
+
+# Remove unused cells and wires, equivalent to ;; .
+clean
+
+prep -top noc
