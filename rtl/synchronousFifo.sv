@@ -56,9 +56,12 @@ module synchronousFifo
   localparam int unsigned DEPTH = 1 << ADDR_W;
   logic [DATA_W-1:0] mem [DEPTH-1:0];
 
+  /* svlint off explicit_if_else */
+  // Intended memory inference pattern.
   always_ff @(posedge i_clk)
     if (i_writeEn && !o_full)
       mem[writePointer_q[ADDR_W-1:0]] <= i_writeData;
+  /* svlint on explicit_if_else */
 
   always_comb
     o_readData = mem[readPointer_q[ADDR_W-1:0]];
