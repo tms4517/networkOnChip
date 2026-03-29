@@ -1,5 +1,6 @@
 # make designerTb TEST=1   # random traffic TB (tb_noc.cpp)
 # make designerTb TEST=2   # single packet TB (tb_noc_single_packet.cpp)
+# make designerTb TEST=3   # multi-source to one destination (tb_noc_multi_to_one.cpp)
 
 TOP_MODULE=noc
 RTL_PATH=../rtl
@@ -26,8 +27,17 @@ TIMEOUT_CYCLES ?= 256
 VERILATOR_CFLAGS += -CFLAGS -DSRC_ROW=$(SRC_ROW) -CFLAGS -DSRC_COL=$(SRC_COL)
 VERILATOR_CFLAGS += -CFLAGS -DDST_ROW=$(DST_ROW) -CFLAGS -DDST_COL=$(DST_COL)
 VERILATOR_CFLAGS += -CFLAGS -DTEST_PAYLOAD=$(TEST_PAYLOAD) -CFLAGS -DTIMEOUT_CYCLES=$(TIMEOUT_CYCLES)
+else ifeq ($(TEST),3)
+TB_CPP := tb_noc_multi_to_one.cpp
+WAVEFORM := waveform_multi_to_one.vcd
+STAMP := .stamp.verilate.test3
+DST_ROW ?= 1
+DST_COL ?= 1
+TIMEOUT_CYCLES ?= 512
+VERILATOR_CFLAGS += -CFLAGS -DDST_ROW=$(DST_ROW) -CFLAGS -DDST_COL=$(DST_COL)
+VERILATOR_CFLAGS += -CFLAGS -DTIMEOUT_CYCLES=$(TIMEOUT_CYCLES)
 else
-$(error Unsupported TEST='$(TEST)'. Use TEST=1 or TEST=2)
+$(error Unsupported TEST='$(TEST)'. Use TEST=1, TEST=2, or TEST=3)
 endif
 
 .PHONY: all
@@ -74,5 +84,4 @@ $(STAMP): $(RTL_PATH)/$(TOP_MODULE).sv $(TB_CPP)
 clean:
 	rm -rf .stamp.*;
 	rm -rf ./obj_dir*
-	rm -rf waveform.vcd
-	rm -rf waveform_single.vcd
+	rm -rf *.vcd
