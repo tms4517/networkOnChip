@@ -446,11 +446,13 @@ module router
   // }}} North output
 
   always_comb
-    packetForwarded = |{eastValid && i_eastReady
-                      , westValid && i_westReady
-                      , northValid && i_northReady
-                      , southValid && i_southReady
-                      , isDestination && i_niReady
+    // Ack the arbiter only when a packet transfer actually occurs on a
+    // registered output valid/ready interface in this cycle.
+    packetForwarded = |{o_eastValid && i_eastReady
+                      , o_westValid && i_westReady
+                      , o_northValid && i_northReady
+                      , o_southValid && i_southReady
+                      , o_niValid && i_niReady
                       };
   // }}} Forward packets to neighboring routers
 
