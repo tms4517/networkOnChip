@@ -41,6 +41,7 @@ module roundRobinArbiter
 
   ty_CLIENT_MASK mask_q, mask_d;
   ty_CLIENT_GRANTED grant_q, grant_d;
+  logic currentGrantHasRequest;
 
   // Mask register: tracks which client should be prioritized next. The mask is
   // updated only when a grant is issued AND the downstream acknowledges
@@ -66,10 +67,16 @@ module roundRobinArbiter
 
   // Client granted access. Only advance to the next grant when the current one
   // has been acknowledged.
+  always_comb
+    currentGrantHasRequest = |(grant_q & i_request);
+
   always_ff @(posedge i_clk, negedge i_rst_n)
     if (!i_rst_n)
       grant_q <= ty_CLIENT_GRANTED'('0);
-    else if (i_ack || (grant_q == ty_CLIENT_GRANTED'('0)))
+    // Re-arbitrate if current transfer is acknowledged, if there is no active
+    // grant yet, or if the granted requester no longer has a request.
+    else if (i_ack || (grant_q == ty_CLIENT_GRANTED'('0))
+                  || !currentGrantHasRequest)
       grant_q <= grant_d;
     else
       grant_q <= grant_q;
