@@ -9,15 +9,15 @@
 #include <verilated.h>       // Common verilator routines.
 #include <verilated_vcd_c.h> // Write waverforms to a VCD file.
 
-#define RESET_DEASSERT 2 // Clk edge number to deassert arst.
-#define RESET_ASSERT 5   // Clk edge number to assert arst.
+#define RESET_CYCLES 6   // Keep async reset asserted for initial cycles.
 #define GRID_WIDTH 4     // Number of routers along one dimension of the grid.
 #define NUM_ROUTERS (GRID_WIDTH * GRID_WIDTH)
 #define PACKET_WIDTH 73
 #define BUS_WORDS ((NUM_ROUTERS * PACKET_WIDTH + 31) / 32)
 #define ROUTER_READY_MASK ((1U << NUM_ROUTERS) - 1U)
 #define INJECTION_PERIOD 10
-#define RECEIVE_TIMEOUT 128
+#define RECEIVE_TIMEOUT 1024
+#define POST_RX_QUIET_CYCLES 6
 
 vluint64_t sim_time = 0;
 vluint64_t posedge_cnt = 0;
@@ -34,6 +34,7 @@ struct PacketTxn {
 };
 
 static PacketTxn g_txn = {false, false, 0, 0, 0, 0, 0, 0};
+static int g_quiet_cycles_remaining = 0;
 
 static inline int routerIndex(int row, int col) {
   return row * GRID_WIDTH + col;
@@ -43,19 +44,18 @@ static inline uint32_t routerMask(int row, int col) {
   return 1U << routerIndex(row, col);
 }
 
-// Deassert arst_n only on the first clock edge.
-// Note: By default all signals are initialized to 0, so there's no need to
-// drive the other inputs to '0.
+// Hold reset active at startup to initialize all sequential state
+// deterministically before traffic generation.
 void dut_reset(Vnoc *dut, bool do_reset) {
   dut->i_arst_n = 1;
 
-  if (do_reset ||
-      (sim_time > RESET_DEASSERT + 1) && (sim_time < RESET_ASSERT + 1)) {
+  if (do_reset || (sim_time < RESET_CYCLES)) {
     dut->i_arst_n = 0;
     dut->i_niToRouterValid = 0;
     dut->i_routerToNiReady = 0;
     g_txn.in_flight = false;
     g_txn.waiting_accept = false;
+    g_quiet_cycles_remaining = 0;
 
     // Clear all elements
     for (int i = 0; i < BUS_WORDS; i++) {
@@ -280,7 +280,7 @@ int main(int argc, char **argv, char **env) {
     if (dut->i_clk == 1) {
       posedge_cnt++;
 
-      if (g_txn.waiting_accept &&
+      if (dut->i_arst_n && g_txn.waiting_accept &&
           (dut->o_niToRouterReady & routerMask(g_txn.src_row, g_txn.src_col))) {
         g_txn.waiting_accept = false;
         g_txn.in_flight = true;
@@ -289,8 +289,17 @@ int main(int argc, char **argv, char **env) {
                       g_txn.payload);
       }
 
+      if (dut->i_arst_n && g_quiet_cycles_remaining > 0) {
+        if (dut->o_routerToNiValid == 0) {
+          g_quiet_cycles_remaining--;
+        } else {
+          g_quiet_cycles_remaining = POST_RX_QUIET_CYCLES;
+        }
+      }
+
       // Queue one packet periodically when no older packet is outstanding.
-      if (!g_txn.in_flight && !g_txn.waiting_accept &&
+      if (dut->i_arst_n && !g_txn.in_flight && !g_txn.waiting_accept &&
+          (g_quiet_cycles_remaining == 0) &&
           (posedge_cnt % INJECTION_PERIOD == 0)) {
         g_txn.src_row = rand() % GRID_WIDTH;
         g_txn.src_col = rand() % GRID_WIDTH;
@@ -300,12 +309,13 @@ int main(int argc, char **argv, char **env) {
         g_txn.waiting_accept = true;
       }
 
-      if (g_txn.in_flight) {
+      if (dut->i_arst_n && g_txn.in_flight) {
         bool received = readPacketFromDestinationRouter(
             dut, g_txn.dst_row, g_txn.dst_col, g_txn.payload);
 
         if (received) {
           g_txn.in_flight = false;
+          g_quiet_cycles_remaining = POST_RX_QUIET_CYCLES;
         } else if ((posedge_cnt - g_txn.sent_posedge) > RECEIVE_TIMEOUT) {
           std::cout << "Time: " << sim_time << ", Posedge Cnt: " << posedge_cnt
                     << std::endl;
@@ -322,6 +332,7 @@ int main(int argc, char **argv, char **env) {
       if (!dut->i_arst_n) {
         g_txn.in_flight = false;
         g_txn.waiting_accept = false;
+        g_quiet_cycles_remaining = 0;
       }
     }
 
