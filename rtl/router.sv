@@ -41,11 +41,6 @@ module router
 , input  var logic                    i_niValid
 , output var logic                    o_niReady
 
-// To network interface
-, output var logic [PACKET_WIDTH-1:0] o_ni
-, output var logic                    o_niValid
-, input  var logic                    i_niReady
-
 // From North neighbouring router
 , input  var logic [PACKET_WIDTH-1:0] i_north
 , input  var logic                    i_northValid
@@ -65,6 +60,11 @@ module router
 , input  var logic [PACKET_WIDTH-1:0] i_west
 , input  var logic                    i_westValid
 , output var logic                    o_westReady
+
+// To network interface
+, output var logic [PACKET_WIDTH-1:0] o_ni
+, output var logic                    o_niValid
+, input  var logic                    i_niReady
 
 // To North neighbouring router
 , output var logic [PACKET_WIDTH-1:0] o_north
