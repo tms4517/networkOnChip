@@ -9,26 +9,56 @@
 #include <verilated.h>       // Common verilator routines.
 #include <verilated_vcd_c.h> // Write waverforms to a VCD file.
 
-#define RESET_DEASSERT 2 // Clk edge number to deassert arst.
-#define RESET_ASSERT 5   // Clk edge number to assert arst.
+#define RESET_CYCLES 6   // Keep async reset asserted for initial cycles.
 #define GRID_WIDTH 4     // Number of routers along one dimension of the grid.
+#define NUM_ROUTERS (GRID_WIDTH * GRID_WIDTH)
+#define PACKET_WIDTH 73
+#define BUS_WORDS ((NUM_ROUTERS * PACKET_WIDTH + 31) / 32)
+#define ROUTER_READY_MASK ((1U << NUM_ROUTERS) - 1U)
+#define INJECTION_PERIOD 10
+#define RECEIVE_TIMEOUT 1024
+#define POST_RX_QUIET_CYCLES 6
 
 vluint64_t sim_time = 0;
 vluint64_t posedge_cnt = 0;
-vluint64_t packet_sent_cnt = 0;
 
-// Deassert arst_n only on the first clock edge.
-// Note: By default all signals are initialized to 0, so there's no need to
-// drive the other inputs to '0.
+struct PacketTxn {
+  bool in_flight;
+  bool waiting_accept;
+  int src_row;
+  int src_col;
+  int dst_row;
+  int dst_col;
+  uint64_t payload;
+  vluint64_t sent_posedge;
+};
+
+static PacketTxn g_txn = {false, false, 0, 0, 0, 0, 0, 0};
+static int g_quiet_cycles_remaining = 0;
+
+static inline int routerIndex(int row, int col) {
+  return row * GRID_WIDTH + col;
+}
+
+static inline uint32_t routerMask(int row, int col) {
+  return 1U << routerIndex(row, col);
+}
+
+// Hold reset active at startup to initialize all sequential state
+// deterministically before traffic generation.
 void dut_reset(Vnoc *dut, bool do_reset) {
   dut->i_arst_n = 1;
 
-  if (do_reset ||
-      (sim_time > RESET_DEASSERT + 1) && (sim_time < RESET_ASSERT + 1)) {
+  if (do_reset || (sim_time < RESET_CYCLES)) {
     dut->i_arst_n = 0;
+    dut->i_niToRouterValid = 0;
+    dut->i_routerToNiReady = 0;
+    g_txn.in_flight = false;
+    g_txn.waiting_accept = false;
+    g_quiet_cycles_remaining = 0;
 
     // Clear all elements
-    for (int i = 0; i < 37; i++) {
+    for (int i = 0; i < BUS_WORDS; i++) {
       dut->i_niToRouter[i] = 0;
     }
   }
@@ -44,7 +74,7 @@ void dut_reset(Vnoc *dut, bool do_reset) {
 void writePacketToRandomRouter(Vnoc *dut, int row, int col, int destination_row,
                                int destination_col, uint64_t payload) {
 
-  const int BITS_PER_PACKET = 73;
+  const int BITS_PER_PACKET = PACKET_WIDTH;
   const int BITS_PER_ELEMENT = 32;
 
   // Construct 73-bit packet: payload(69)|destination_row(2)|destination_col(2)
@@ -57,16 +87,17 @@ void writePacketToRandomRouter(Vnoc *dut, int row, int col, int destination_row,
   // Upper 9 bits (4 from payload shift + 5 more)
   uint16_t packet_high = (payload >> 60) & 0x1FF;
 
-  int router_id = row * GRID_WIDTH + col;
+  int router_id = routerIndex(row, col);
   int start_bit = router_id * BITS_PER_PACKET;
 
   int element_index = start_bit / BITS_PER_ELEMENT;
   int bit_offset = start_bit % BITS_PER_ELEMENT;
 
-  // Zero out all the other elements, remove previous transactions from routers.
-  for (int i = 0; i < 37; i++) {
+  // Keep this TB single-transaction by driving only one NI input at a time.
+  for (int i = 0; i < BUS_WORDS; i++) {
     dut->i_niToRouter[i] = 0;
   }
+  dut->i_niToRouterValid = 0;
 
   // Write lower 32 bits of packet_low
   uint32_t low_32 = packet_low & 0xFFFFFFFF;
@@ -92,6 +123,12 @@ void writePacketToRandomRouter(Vnoc *dut, int row, int col, int destination_row,
     dut->i_niToRouter[element_index + 3] |= packet_high >> (32 - bit_offset);
   }
 
+  dut->i_niToRouterValid = routerMask(row, col);
+
+}
+
+void logPacketSent(int row, int col, int destination_row, int destination_col,
+                   uint64_t payload) {
   std::cout << "Time: " << sim_time << ", Posedge Cnt: " << posedge_cnt
             << std::endl;
   std::cout << " Sent packet from router (" << row << "," << col
@@ -100,12 +137,11 @@ void writePacketToRandomRouter(Vnoc *dut, int row, int col, int destination_row,
             << std::setfill('0') << payload << std::dec << std::endl;
 }
 
-void readPacketFromDestinationRouter(Vnoc *dut, int row, int col,
-                                     uint64_t expected_payload) {
-  const int BITS_PER_PACKET = 73;
+uint64_t extractPayloadFromRouter(Vnoc *dut, int row, int col) {
+  const int BITS_PER_PACKET = PACKET_WIDTH;
   const int BITS_PER_ELEMENT = 32;
 
-  int router_id = row * GRID_WIDTH + col;
+  int router_id = routerIndex(row, col);
   int start_bit = router_id * BITS_PER_PACKET;
 
   int element_index = start_bit / BITS_PER_ELEMENT;
@@ -145,8 +181,40 @@ void readPacketFromDestinationRouter(Vnoc *dut, int row, int col,
                    << (32 - bit_offset);
   }
 
-  // Reconstruct full payload from received packet (strip off routing bits)
-  uint64_t received_payload = ((uint64_t)packet_high << 60) | (packet_low >> 4);
+  return ((uint64_t)packet_high << 60) | (packet_low >> 4);
+}
+
+bool readPacketFromDestinationRouter(Vnoc *dut, int row, int col,
+                                     uint64_t expected_payload) {
+  uint32_t valid_mask = dut->o_routerToNiValid;
+
+  if ((valid_mask & routerMask(row, col)) == 0) {
+    // If expected payload appears at the wrong NI, report routing error
+    // immediately instead of waiting for timeout.
+    if (valid_mask != 0) {
+      for (int rr = 0; rr < GRID_WIDTH; rr++) {
+        for (int cc = 0; cc < GRID_WIDTH; cc++) {
+          if ((valid_mask & routerMask(rr, cc)) == 0) {
+            continue;
+          }
+
+          uint64_t payload = extractPayloadFromRouter(dut, rr, cc);
+          if (payload == expected_payload) {
+            std::cout << "Time: " << sim_time << ", Posedge Cnt: " << posedge_cnt
+                      << std::endl;
+            std::cout << " ERROR: Packet reached wrong router (" << rr << ","
+                      << cc << "), expected (" << row << "," << col << ")"
+                      << std::endl;
+            std::cout << "******************" << std::endl;
+            exit(EXIT_FAILURE);
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  uint64_t received_payload = extractPayloadFromRouter(dut, row, col);
 
   // Check if the received payload matches the expected payload
   if (received_payload == expected_payload) {
@@ -156,6 +224,7 @@ void readPacketFromDestinationRouter(Vnoc *dut, int row, int col,
               << ") with payload: 0x" << std::hex << std::setw(16)
               << std::setfill('0') << received_payload << std::dec << std::endl;
     std::cout << "******************" << std::endl;
+    return true;
   } else {
     std::cout << "Time: " << sim_time << ", Posedge Cnt: " << posedge_cnt
               << std::endl;
@@ -167,6 +236,8 @@ void readPacketFromDestinationRouter(Vnoc *dut, int row, int col,
     std::cout << "******************" << std::endl;
     exit(EXIT_FAILURE);
   }
+
+  return false;
 }
 
 int main(int argc, char **argv, char **env) {
@@ -186,6 +257,22 @@ int main(int argc, char **argv, char **env) {
   while (sim_time < MAX_SIM_TIME) {
     dut_reset(dut, false);
 
+    // Always ready to receive packets at all NI endpoints.
+    if (dut->i_arst_n) {
+      dut->i_routerToNiReady = ROUTER_READY_MASK;
+    }
+
+    // Default to no NI injection. If there is a pending transaction, keep
+    // driving valid/data until the source router accepts it.
+    dut->i_niToRouterValid = 0;
+    for (int i = 0; i < BUS_WORDS; i++) {
+      dut->i_niToRouter[i] = 0;
+    }
+    if (dut->i_arst_n && g_txn.waiting_accept) {
+      writePacketToRandomRouter(dut, g_txn.src_row, g_txn.src_col, g_txn.dst_row,
+                                g_txn.dst_col, g_txn.payload);
+    }
+
     dut->i_clk ^= 1; // Toggle clk to create pos and neg edge.
 
     dut->eval(); // Evaluate all the signals in the DUT on each clock edge.
@@ -193,29 +280,59 @@ int main(int argc, char **argv, char **env) {
     if (dut->i_clk == 1) {
       posedge_cnt++;
 
-      int rand_row, rand_col, rand_destination_row, rand_destination_col;
-      uint64_t rand_payload;
-      // send a packet to a random router every 10 posedge clk
-      if (posedge_cnt % 10 == 0) {
-        rand_row = rand() % GRID_WIDTH;
-        rand_col = rand() % GRID_WIDTH;
-        rand_destination_row = rand() % GRID_WIDTH;
-        rand_destination_col = rand() % GRID_WIDTH;
-        rand_payload = ((uint64_t)rand() << 32) | rand();
-
-        writePacketToRandomRouter(dut, rand_row, rand_col, rand_destination_row,
-                                  rand_destination_col, rand_payload);
-
-        // Record the clock cycle edge count when the packet was sent
-        packet_sent_cnt = posedge_cnt;
+      if (dut->i_arst_n && g_txn.waiting_accept &&
+          (dut->o_niToRouterReady & routerMask(g_txn.src_row, g_txn.src_col))) {
+        g_txn.waiting_accept = false;
+        g_txn.in_flight = true;
+        g_txn.sent_posedge = posedge_cnt;
+        logPacketSent(g_txn.src_row, g_txn.src_col, g_txn.dst_row, g_txn.dst_col,
+                      g_txn.payload);
       }
 
-      // After 8 clock cycles, read back the packet from the destination
-      // router to verify it was received correctly.
-      if (posedge_cnt == (packet_sent_cnt + (GRID_WIDTH * 2)) &&
-          packet_sent_cnt != 0) {
-        readPacketFromDestinationRouter(dut, rand_destination_row,
-                                        rand_destination_col, rand_payload);
+      if (dut->i_arst_n && g_quiet_cycles_remaining > 0) {
+        if (dut->o_routerToNiValid == 0) {
+          g_quiet_cycles_remaining--;
+        } else {
+          g_quiet_cycles_remaining = POST_RX_QUIET_CYCLES;
+        }
+      }
+
+      // Queue one packet periodically when no older packet is outstanding.
+      if (dut->i_arst_n && !g_txn.in_flight && !g_txn.waiting_accept &&
+          (g_quiet_cycles_remaining == 0) &&
+          (posedge_cnt % INJECTION_PERIOD == 0)) {
+        g_txn.src_row = rand() % GRID_WIDTH;
+        g_txn.src_col = rand() % GRID_WIDTH;
+        g_txn.dst_row = rand() % GRID_WIDTH;
+        g_txn.dst_col = rand() % GRID_WIDTH;
+        g_txn.payload = ((uint64_t)rand() << 32) | rand();
+        g_txn.waiting_accept = true;
+      }
+
+      if (dut->i_arst_n && g_txn.in_flight) {
+        bool received = readPacketFromDestinationRouter(
+            dut, g_txn.dst_row, g_txn.dst_col, g_txn.payload);
+
+        if (received) {
+          g_txn.in_flight = false;
+          g_quiet_cycles_remaining = POST_RX_QUIET_CYCLES;
+        } else if ((posedge_cnt - g_txn.sent_posedge) > RECEIVE_TIMEOUT) {
+          std::cout << "Time: " << sim_time << ", Posedge Cnt: " << posedge_cnt
+                    << std::endl;
+          std::cout << " ERROR: Timed out waiting for packet at router ("
+                    << g_txn.dst_row << "," << g_txn.dst_col
+                    << "). Payload: 0x" << std::hex << std::setw(16)
+                    << std::setfill('0') << g_txn.payload << std::dec
+                    << std::endl;
+          std::cout << "******************" << std::endl;
+          exit(EXIT_FAILURE);
+        }
+      }
+
+      if (!dut->i_arst_n) {
+        g_txn.in_flight = false;
+        g_txn.waiting_accept = false;
+        g_quiet_cycles_remaining = 0;
       }
     }
 
