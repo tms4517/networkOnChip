@@ -1,10 +1,18 @@
 // Top level module.
 
+// Default: APB Packet Definition
+// -------------------------------------------------------------------
+// |72                             4|3              2|1              0|
+// |       Payload (69 bits)        |Dst Row (2 bits)|Dst Col (2 bits)|
+// |-------------------------------------------------------------------
+
 `default_nettype none
 
 module noc
 #(parameter int unsigned GRID_WIDTH = 4
-, localparam int unsigned PACKET_WIDTH = pa_noc::PACKET_WIDTH
+, parameter int unsigned PAYLOAD_WIDTH = pa_noc::APB_PAYLOAD_WIDTH
+, parameter int unsigned FIFO_ADDRESS_WIDTH = pa_noc::FIFO_ADDRESS_WIDTH
+, localparam int unsigned PACKET_WIDTH = PAYLOAD_WIDTH + ($clog2(GRID_WIDTH) * 2)
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n
@@ -23,8 +31,10 @@ module noc
   end: ParamCheck
 
   mesh
-  #(.GRID_WIDTH(GRID_WIDTH))
-  u_mesh
+  #(.GRID_WIDTH         (GRID_WIDTH)
+  , .PACKET_WIDTH       (PACKET_WIDTH)
+  , .FIFO_ADDRESS_WIDTH (FIFO_ADDRESS_WIDTH)
+  ) u_mesh
   ( .i_clk    (i_clk)
   , .i_arst_n (i_arst_n)
 

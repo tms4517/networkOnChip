@@ -22,7 +22,8 @@
 
 module mesh
 #(parameter int unsigned GRID_WIDTH = 4
-, localparam int unsigned PACKET_WIDTH = pa_noc::PACKET_WIDTH
+, parameter int unsigned PACKET_WIDTH = 73
+, parameter int unsigned FIFO_ADDRESS_WIDTH = pa_noc::FIFO_ADDRESS_WIDTH
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n
@@ -167,9 +168,11 @@ module mesh
     for (genvar col = 0; col < GRID_WIDTH; col++) begin: perCol
 
       router
-      #(.ROUTER_ROW (row)
+      #(.GRID_WIDTH (GRID_WIDTH)
+      , .PACKET_WIDTH (PACKET_WIDTH)
+      , .FIFO_ADDRESS_WIDTH (FIFO_ADDRESS_WIDTH)
+      , .ROUTER_ROW (row)
       , .ROUTER_COL (col)
-      , .GRID_WIDTH (GRID_WIDTH)
       ) u_router
       ( .i_clk    (i_clk)
       , .i_arst_n (i_arst_n)
