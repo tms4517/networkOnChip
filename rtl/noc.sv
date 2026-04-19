@@ -11,7 +11,7 @@
 module noc
 #(parameter int unsigned GRID_WIDTH = 4
 , parameter int unsigned PAYLOAD_WIDTH = pa_noc::APB_PAYLOAD_WIDTH
-, parameter int unsigned FIFO_ADDRESS_WIDTH = pa_noc::FIFO_ADDRESS_WIDTH
+, parameter int unsigned FIFO_ADDRESS_WIDTH = pa_noc::FIFO_ADDRESS_W
 , localparam int unsigned PACKET_WIDTH = PAYLOAD_WIDTH + ($clog2(GRID_WIDTH) * 2)
 )
 ( input  var logic i_clk

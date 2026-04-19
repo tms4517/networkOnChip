@@ -9,7 +9,7 @@ package pa_noc;
 
   localparam int unsigned APB_PAYLOAD_WIDTH = 69;
 
-  localparam int unsigned FIFO_ADDRESS_WIDTH = 2;
+  localparam int unsigned FIFO_ADDRESS_W = 2;
 
   localparam int unsigned NUM_INPUT_FIFOS = 5;
 
