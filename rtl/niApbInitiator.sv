@@ -1,9 +1,9 @@
 // Network Interface — APB Initiator
 
 // This module sits between an APB initiator (master) and a NoC router NI port.
-// On every APB access phase (PSEL & PENABLE), it decodes PADDR against the
-// address map to determine the destination router (dstRow, dstCol), assembles
-// the NoC packet, and drives the router's ingress handshake.
+// On every APB access phase, it decodes the address against the address map to
+// determine the destination router, assembles the NoC packet, and drives the
+// router's ingress handshake.
 
 // TODO:
 // Only WRITE transactions are forwarded into the mesh in this implementation.
@@ -11,7 +11,7 @@
 
 `default_nettype none
 
-module ni_apb_initiator
+module niApbInitiator
   import pa_noc::*;
 #(parameter int unsigned GRID_WIDTH                               = 4
 , parameter int unsigned NUM_ADDR_MAP_ENTRIES                     = GRID_WIDTH * GRID_WIDTH
@@ -53,10 +53,14 @@ module ni_apb_initiator
   // Entries are checked from index 0 upward; the first matching entry wins.
   // If no entry matches, the packet is not forwarded (o_niToRouterValid is low)
   // and the APB transaction completes with a SLVERR response.
+  // TODO: Is there a better way of creating this priority encoder?
   logic                    addrHit;
   logic [COORD_WIDTH-1:0]  dstRow;
   logic [COORD_WIDTH-1:0]  dstCol;
 
+  /* svlint off sequential_block_in_always_comb */
+  /* svlint off loop_statement_in_always_comb */
+  /* svlint off explicit_if_else */
   always_comb begin
     addrHit = 1'b0;
     dstRow  = '0;
@@ -72,6 +76,9 @@ module ni_apb_initiator
       end
     end
   end
+  /* svlint on explicit_if_else */
+  /* svlint on loop_statement_in_always_comb */
+  /* svlint on sequential_block_in_always_comb */
   // }}} Address decode
 
   // {{{ Pack APB Payload
@@ -80,8 +87,8 @@ module ni_apb_initiator
   // |68            37|36             5|4      |3        0 |
   // |PADDR (32 bits) |PWDATA (32 bits)|PWRITE |PSTRB(4b)  |
   // -------------------------------------------------------
-  // APB payload: {PADDR, PWDATA, PWRITE, PSTRB}
   logic [PAYLOAD_WIDTH-1:0] apbPayload;
+
   always_comb
     apbPayload = {i_paddr, i_pwdata, i_pwrite, i_pstrb};
 
@@ -102,27 +109,29 @@ module ni_apb_initiator
   // Unmatched addresses respond immediately with SLVERR.
 
   logic accessPhase;
-  always_comb accessPhase = i_psel & i_penable;
+
+  always_comb accessPhase = i_psel && i_penable;
 
   // Drive router valid only during an access phase with a matching address
   always_comb
-    o_niToRouterValid = accessPhase & i_pwrite & addrHit;
+    o_niToRouterValid = accessPhase && i_pwrite && addrHit;
 
   // APB PREADY: complete immediately on SLVERR; otherwise wait for NoC accept
-  always_comb begin
-    if (!accessPhase) begin
+  always_comb
+    if (!accessPhase)
       o_pready  = 1'b0;
-      o_pslverr = 1'b0;
-    end else if (!addrHit) begin
-      // No map entry matched — error response
+    else if (!addrHit)
       o_pready  = 1'b1;
-      o_pslverr = 1'b1;
-    end else begin
-      // Stall APB until the router accepts the packet
+    else
       o_pready  = i_niToRouterReady;
+
+  always_comb
+    if (!accessPhase)
       o_pslverr = 1'b0;
-    end
-  end
+    else if (!addrHit)
+      o_pslverr = 1'b1; // No map entry matched — error response
+    else
+      o_pslverr = 1'b0;
   // }}} Handshake / flow control
 
 endmodule
