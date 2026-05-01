@@ -4,10 +4,13 @@
 // On every APB access phase, it decodes the address against the address map to
 // determine the destination router, assembles the NoC packet, and drives the
 // router's ingress handshake.
-
-// TODO:
-// Only WRITE transactions are forwarded into the mesh in this implementation.
-// READ support (requiring a return packet) is a future extension.
+//
+// WRITE transactions: the packet is forwarded into the mesh and the APB bus is
+// stalled until the router accepts it.
+//
+// READ transactions: a request packet (with PWRITE=0) is forwarded into the
+// mesh.  The APB bus is then stalled until a response packet arrives back
+// through the router-to-NI port carrying PRDATA in the PWDATA field position.
 
 `default_nettype none
 
@@ -33,11 +36,17 @@ module niApbInitiator
 , input  var logic        i_penable
 , output var logic        o_pready
 , output var logic        o_pslverr
+, output var logic [31:0] o_prdata
 
-  // NoC router NI initiator to router
+  // NoC router NI — initiator to router (request)
 , output var logic [PACKET_WIDTH-1:0] o_niToRouter
 , output var logic                    o_niToRouterValid
 , input  var logic                    i_niToRouterReady
+
+  // NoC router NI — router to initiator (response)
+, input  var logic [PACKET_WIDTH-1:0] i_routerToNi
+, input  var logic                    i_routerToNiValid
+, output var logic                    o_routerToNiReady
 );
 
   // {{{ Address decode
@@ -103,33 +112,101 @@ module niApbInitiator
   // }}} Pack APB Payload
 
   // {{{ Handshake / flow control
-  // A NoC transfer is initiated during the APB access phase (PSEL & PENABLE)
-  // when the address hits the map.  The APB transaction is held (PREADY low)
-  // until the router accepts the packet (i_niToRouterReady).
-  // Unmatched addresses respond immediately with SLVERR.
+  // WRITE: packet is forwarded; APB stalls until the router accepts.
+  // READ:  request packet is forwarded; APB stalls until the response
+  //        packet arrives back through the router-to-NI port.
+  // FSM states:
+  //   ST_IDLE      — ready for a new APB transaction
+  //   ST_READ_RESP — read request accepted by router, waiting for response
 
   logic accessPhase;
 
-  always_comb accessPhase = i_psel && i_penable;
-
-  // Drive router valid only during an access phase with a matching address
   always_comb
-    o_niToRouterValid = accessPhase && i_pwrite && addrHit;
+    accessPhase = i_psel && i_penable;
 
-  // APB PREADY: complete immediately on SLVERR; otherwise wait for NoC accept
+  logic readReqAccepted;
+
   always_comb
-    if (!accessPhase)
-      o_pready  = 1'b0;
-    else if (!addrHit)
-      o_pready  = 1'b1;
+    readReqAccepted = accessPhase && !i_pwrite && addrHit && i_niToRouterReady;
+
+  typedef enum logic
+  { ST_IDLE
+  , ST_READ_RESP
+  } ty_state;
+
+  ty_state state_q, state_d;
+
+  always_ff @(posedge i_clk or negedge i_arst_n)
+    if (!i_arst_n)
+      state_q <= ST_IDLE;
     else
-      o_pready  = i_niToRouterReady;
+      state_q <= state_d;
 
   always_comb
-    if (!accessPhase)
+    case (state_q)
+      ST_IDLE:
+        state_d = readReqAccepted ? ST_READ_RESP : ST_IDLE;
+      ST_READ_RESP:
+        state_d = i_routerToNiValid ? ST_IDLE : ST_READ_RESP;
+      default:
+        state_d = ST_IDLE;
+    endcase
+
+  // NoC request valid
+  // Drive valid for both reads and writes, but only in IDLE
+  // (prevents re-sending the read request while waiting for response).
+  always_comb
+    if (state_q == ST_IDLE && accessPhase && addrHit)
+      o_niToRouterValid = 1'b1;
+    else
+      o_niToRouterValid = 1'b0;
+
+  // NoC response ready
+  // Accept a response only when waiting for one.
+  always_comb
+    if (state_q == ST_READ_RESP)
+      o_routerToNiReady = 1'b1;
+    else
+      o_routerToNiReady = 1'b0;
+
+  // PRDATA
+  // Response payload uses the same encoding as the request;
+  // PRDATA occupies the PWDATA field position: payload bits [36:5].
+  logic [PAYLOAD_WIDTH-1:0] respPayload;
+
+  always_comb
+    respPayload = i_routerToNi[PACKET_WIDTH-1 -: PAYLOAD_WIDTH];
+
+  always_comb
+    if (state_q == ST_READ_RESP && i_routerToNiValid)
+      o_prdata = respPayload[36:5];
+    else
+      o_prdata = '0;
+
+  // PREADY
+  // Writes:       complete when router accepts the packet.
+  // Reads (IDLE): stall while request is being sent.
+  // Reads (RESP): complete when response arrives.
+  // No addr hit:  complete immediately (SLVERR).
+  always_comb
+    if (state_q == ST_READ_RESP)
+      o_pready = i_routerToNiValid;
+    else if (!accessPhase)
+      o_pready = 1'b0;
+    else if (!addrHit)
+      o_pready = 1'b1;
+    else if (i_pwrite)
+      o_pready = i_niToRouterReady;
+    else
+      o_pready = 1'b0;
+
+  always_comb
+    if (state_q == ST_READ_RESP)
+      o_pslverr = 1'b0;
+    else if (!accessPhase)
       o_pslverr = 1'b0;
     else if (!addrHit)
-      o_pslverr = 1'b1; // No map entry matched — error response
+      o_pslverr = 1'b1;
     else
       o_pslverr = 1'b0;
   // }}} Handshake / flow control
