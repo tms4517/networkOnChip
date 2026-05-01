@@ -169,7 +169,6 @@ module niApbInitiator
     else
       o_routerToNiReady = 1'b0;
 
-  // PRDATA
   // Response payload uses the same encoding as the request;
   // PRDATA occupies the PWDATA field position: payload bits [36:5].
   logic [PAYLOAD_WIDTH-1:0] respPayload;
@@ -183,7 +182,6 @@ module niApbInitiator
     else
       o_prdata = '0;
 
-  // PREADY
   // Writes:       complete when router accepts the packet.
   // Reads (IDLE): stall while request is being sent.
   // Reads (RESP): complete when response arrives.
