@@ -117,17 +117,17 @@ module tb_niApbInitiator_top
 
   // Wire niApbInitiator to NOC at (SRC_ROW, SRC_COL)
   // Tie off all other NI inputs (no other initiators active)
-  for (genvar r = 0; r < GRID_WIDTH; r++) begin: gen_ni_row
-    for (genvar c = 0; c < GRID_WIDTH; c++) begin: gen_ni_col
+  for (genvar i = 0; i < GRID_WIDTH; i++) begin: gen_ni_row
+    for (genvar j = 0; j < GRID_WIDTH; j++) begin: gen_ni_col
       always_comb begin
-        if (r == SRC_ROW && c == SRC_COL) begin
-          niToRouter[r][c]      = niToRouter_src;
-          niToRouterValid[r][c] = niToRouterValid_src;
-          routerToNiReady[r][c] = routerToNiReady_src;
+        if (i == SRC_ROW && j == SRC_COL) begin
+          niToRouter[i][j]      = niToRouter_src;
+          niToRouterValid[i][j] = niToRouterValid_src;
+          routerToNiReady[i][j] = routerToNiReady_src;
         end else begin
-          niToRouter[r][c]      = '0;
-          niToRouterValid[r][c] = 1'b0;
-          routerToNiReady[r][c] = 1'b1; // always accept (drain) at idle nodes
+          niToRouter[i][j]      = '0;
+          niToRouterValid[i][j] = 1'b0;
+          routerToNiReady[i][j] = 1'b1; // always accept (drain) at idle nodes
         end
       end
     end
@@ -158,16 +158,16 @@ module tb_niApbInitiator_top
   );
 
   // {{{ Flatten outputs for C++ access
-  for (genvar gr = 0; gr < GRID_WIDTH; gr++) begin: gen_row
-    for (genvar gc = 0; gc < GRID_WIDTH; gc++) begin: gen_col
+  for (genvar i = 0; i < GRID_WIDTH; i++) begin: gen_row
+    for (genvar j = 0; j < GRID_WIDTH; j++) begin: gen_col
 
-      localparam int unsigned IDX = gr * GRID_WIDTH + gc;
-
-      always_comb
-        o_routerToNiValid[IDX] = routerToNiValid[gr][gc];
+      localparam int unsigned IDX = i * GRID_WIDTH + j;
 
       always_comb
-        o_routerToNi_flat[IDX*PACKET_WIDTH +: PACKET_WIDTH] = routerToNi[gr][gc];
+        o_routerToNiValid[IDX] = routerToNiValid[i][j];
+
+      always_comb
+        o_routerToNi_flat[IDX*PACKET_WIDTH +: PACKET_WIDTH] = routerToNi[i][j];
     end
   end
   // }}} Flatten outputs for C++ access
