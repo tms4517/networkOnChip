@@ -1,6 +1,8 @@
-// Testbench wrapper: instantiates the NOC and a single niApbInitiator
-// connected at router (SRC_ROW, SRC_COL). APB and destination monitor
-// ports are exposed to C++ via Verilator.
+// Testbench wrapper
+// This module instantiates the NOC and connects a single Apb Initiator
+// to a router (SRC_ROW, SRC_COL). APB and destination monitor ports are
+// exposed to C++ via Verilator. A C++ APB driver can drive APB transactions
+// into the initiator and observe the responses.
 
 `default_nettype none
 
@@ -34,29 +36,41 @@ module tb_niApbInitiator_top
 , output var logic [NUM_ROUTERS*PACKET_WIDTH-1:0]      o_routerToNi_flat
 );
 
-  // ---------------------------------------------------------------
-  // Address map: 4 entries mapping address ranges to destinations
+  // {{{ Address map
+  // 4 entries mapping address ranges to destinations
   // Entry 0: 0x0000_0000 – 0x0FFF_FFFF → router (0,1)
   // Entry 1: 0x1000_0000 – 0x1FFF_FFFF → router (1,0)
   // Entry 2: 0x2000_0000 – 0x2FFF_FFFF → router (1,1)
   // Entry 3: 0x3000_0000 – 0x3FFF_FFFF → router (GRID_WIDTH-1, GRID_WIDTH-1)
-  // ---------------------------------------------------------------
   localparam int unsigned NUM_ENTRIES = 4;
 
-  localparam ty_ADDR_MAP_ENTRY [NUM_ENTRIES-1:0] ADDR_MAP = '{
-    '{baseAddr: 32'h3000_0000, endAddr: 32'h3FFF_FFFF,
-      dstRow: 8'(GRID_WIDTH-1), dstCol: 8'(GRID_WIDTH-1)},
-    '{baseAddr: 32'h2000_0000, endAddr: 32'h2FFF_FFFF,
-      dstRow: 8'd1, dstCol: 8'd1},
-    '{baseAddr: 32'h1000_0000, endAddr: 32'h1FFF_FFFF,
-      dstRow: 8'd1, dstCol: 8'd0},
-    '{baseAddr: 32'h0000_0000, endAddr: 32'h0FFF_FFFF,
-      dstRow: 8'd0, dstCol: 8'd1}
-  };
+  localparam ty_ADDR_MAP_ENTRY [NUM_ENTRIES-1:0] ADDR_MAP =
+    '{
+      '{baseAddr: 32'h3000_0000
+      , endAddr: 32'h3FFF_FFFF
+      , dstRow: 8'(GRID_WIDTH-1)
+      , dstCol: 8'(GRID_WIDTH-1)
+      },
+      '{baseAddr: 32'h2000_0000
+      , endAddr: 32'h2FFF_FFFF
+      , dstRow: 8'd1
+      , dstCol: 8'd1
+      },
+      '{baseAddr: 32'h1000_0000
+      , endAddr: 32'h1FFF_FFFF
+      , dstRow: 8'd1
+      , dstCol: 8'd0
+      },
+      '{baseAddr: 32'h0000_0000
+      , endAddr: 32'h0FFF_FFFF
+      , dstRow: 8'd0
+      , dstCol: 8'd1
+      }
+    };
+  // }}} Address map
 
-  // ---------------------------------------------------------------
+  // {{{ Interconnects
   // NOC signals
-  // ---------------------------------------------------------------
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][PACKET_WIDTH-1:0] niToRouter;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0]                   niToRouterValid;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0]                   niToRouterReady;
@@ -65,15 +79,14 @@ module tb_niApbInitiator_top
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0]                   routerToNiValid;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0]                   routerToNiReady;
 
-  // ---------------------------------------------------------------
   // niApbInitiator instance — connected at (SRC_ROW, SRC_COL)
-  // ---------------------------------------------------------------
   logic [PACKET_WIDTH-1:0] niToRouter_src;
   logic                    niToRouterValid_src;
   logic                    niToRouterReady_src;
   logic [PACKET_WIDTH-1:0] routerToNi_src;
   logic                    routerToNiValid_src;
   logic                    routerToNiReady_src;
+  // }}} Interconnects
 
   niApbInitiator
   #(.GRID_WIDTH          (GRID_WIDTH)
@@ -102,13 +115,11 @@ module tb_niApbInitiator_top
   , .o_routerToNiReady (routerToNiReady_src)
   );
 
-  // ---------------------------------------------------------------
   // Wire niApbInitiator to NOC at (SRC_ROW, SRC_COL)
   // Tie off all other NI inputs (no other initiators active)
-  // ---------------------------------------------------------------
-  always_comb begin
-    for (int r = 0; r < GRID_WIDTH; r++) begin
-      for (int c = 0; c < GRID_WIDTH; c++) begin
+  for (genvar r = 0; r < GRID_WIDTH; r++) begin: gen_ni_row
+    for (genvar c = 0; c < GRID_WIDTH; c++) begin: gen_ni_col
+      always_comb begin
         if (r == SRC_ROW && c == SRC_COL) begin
           niToRouter[r][c]      = niToRouter_src;
           niToRouterValid[r][c] = niToRouterValid_src;
@@ -122,13 +133,15 @@ module tb_niApbInitiator_top
     end
   end
 
-  assign niToRouterReady_src = niToRouterReady[SRC_ROW][SRC_COL];
-  assign routerToNi_src      = routerToNi[SRC_ROW][SRC_COL];
-  assign routerToNiValid_src = routerToNiValid[SRC_ROW][SRC_COL];
+  always_comb
+    niToRouterReady_src = niToRouterReady[SRC_ROW][SRC_COL];
 
-  // ---------------------------------------------------------------
-  // NOC instance
-  // ---------------------------------------------------------------
+  always_comb
+    routerToNi_src = routerToNi[SRC_ROW][SRC_COL];
+
+  always_comb
+    routerToNiValid_src = routerToNiValid[SRC_ROW][SRC_COL];
+
   noc
   #(.GRID_WIDTH (GRID_WIDTH)
   ) u_noc
@@ -144,19 +157,20 @@ module tb_niApbInitiator_top
   , .i_routerToNiReady (routerToNiReady)
   );
 
-  // ---------------------------------------------------------------
-  // Flatten outputs for C++ access
-  // ---------------------------------------------------------------
-  genvar gr, gc;
-  generate
-    for (gr = 0; gr < GRID_WIDTH; gr++) begin : gen_row
-      for (gc = 0; gc < GRID_WIDTH; gc++) begin : gen_col
-        localparam int unsigned IDX = gr * GRID_WIDTH + gc;
-        assign o_routerToNiValid[IDX] = routerToNiValid[gr][gc];
-        assign o_routerToNi_flat[IDX*PACKET_WIDTH +: PACKET_WIDTH] = routerToNi[gr][gc];
-      end
+  // {{{ Flatten outputs for C++ access
+  for (genvar gr = 0; gr < GRID_WIDTH; gr++) begin: gen_row
+    for (genvar gc = 0; gc < GRID_WIDTH; gc++) begin: gen_col
+
+      localparam int unsigned IDX = gr * GRID_WIDTH + gc;
+
+      always_comb
+        o_routerToNiValid[IDX] = routerToNiValid[gr][gc];
+
+      always_comb
+        o_routerToNi_flat[IDX*PACKET_WIDTH +: PACKET_WIDTH] = routerToNi[gr][gc];
     end
-  endgenerate
+  end
+  // }}} Flatten outputs for C++ access
 
 endmodule
 
