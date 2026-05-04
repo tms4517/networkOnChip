@@ -3,7 +3,7 @@
 # make designerTb TEST=3   # multi-source to one destination (tb_noc_multi_to_one.cpp)
 
 TOP_MODULE=noc
-RTL_PATH=../rtl
+RTL_PATH=../../rtl
 FILE_LIST=$(RTL_PATH)/$(TOP_MODULE).f
 GRID_WIDTH ?= 4
 MAX_SIM_TIME ?= 1000
