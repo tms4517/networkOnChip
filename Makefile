@@ -29,6 +29,11 @@ niApbInitiatorTb:
 	mkdir -p $(LOG_DIR)/niApbInitiatorTb && \
 	$(MAKE) -C $(TB_PATH)/niApbInitiator | tee $(LOG_DIR)/niApbInitiatorTb/sim.log
 
+.PHONY: niApbTargetTb
+niApbTargetTb:
+	mkdir -p $(LOG_DIR)/niApbTargetTb && \
+	$(MAKE) -C $(TB_PATH)/niApbTarget | tee $(LOG_DIR)/niApbTargetTb/sim.log
+
 .PHONY: synthesis
 synthesis:
 	mkdir -p $(LOG_DIR)/synthesis/yosys && \
@@ -42,3 +47,4 @@ clean:
 	rm -rf $(LOG_DIR)
 	$(MAKE) -C $(TB_PATH)/nocStructure clean
 	$(MAKE) -C $(TB_PATH)/niApbInitiator clean
+	$(MAKE) -C $(TB_PATH)/niApbTarget clean
