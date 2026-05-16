@@ -53,6 +53,15 @@ module niApbTarget
 , input  var logic                    i_niToRouterReady
 );
 
+  typedef enum logic [1:0]
+  { ST_IDLE
+  , ST_APB_SETUP
+  , ST_APB_ACCESS
+  , ST_RESP
+  } ty_state;
+
+  ty_state state_q, state_d;
+
   // {{{ Unpack APB Payload
   // APB Payload encoding (same as niApbInitiator):
   // -------------------------------------------------------
@@ -123,21 +132,6 @@ module niApbTarget
   // }}} Flop incoming request fields
 
   // {{{ FSM
-  // States:
-  //   ST_IDLE       — waiting for a request packet from the NoC
-  //   ST_APB_SETUP  — driving APB setup phase (PSEL=1, PENABLE=0)
-  //   ST_APB_ACCESS — driving APB access phase (PENABLE=1), wait for PREADY
-  //   ST_RESP       — for reads: send response packet back through the NoC
-
-  typedef enum logic [1:0]
-  { ST_IDLE
-  , ST_APB_SETUP
-  , ST_APB_ACCESS
-  , ST_RESP
-  } ty_state;
-
-  ty_state state_q, state_d;
-
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
       state_q <= ST_IDLE;
