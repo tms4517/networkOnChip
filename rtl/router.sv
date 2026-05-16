@@ -320,7 +320,7 @@ module router
     if (!i_arst_n)
       o_niValid <= '0;
     else
-      o_niValid <= niValid;
+      o_niValid <= niValid && !(o_niValid && i_niReady);
 
   always_comb
     isDestination = (destinationRow == ROUTER_ROW)
@@ -350,7 +350,7 @@ module router
     if (!i_arst_n)
       o_eastValid <= '0;
     else
-      o_eastValid <= eastValid;
+      o_eastValid <= eastValid && !(o_eastValid && i_eastReady);
 
   // For edge routers at max column (GRID_WIDTH-1), comparison is always false
   // (optimized away by synthesis).
@@ -377,7 +377,7 @@ module router
     if (!i_arst_n)
       o_westValid <= '0;
     else
-      o_westValid <= westValid;
+      o_westValid <= westValid && !(o_westValid && i_westReady);
 
   // For edge routers at column 0, comparison is always false
   // (optimized away by synthesis).
@@ -404,7 +404,7 @@ module router
     if (!i_arst_n)
       o_southValid <= '0;
     else
-      o_southValid <= southValid;
+      o_southValid <= southValid && !(o_southValid && i_southReady);
 
   // For edge routers at max row (GRID_WIDTH-1), comparison is always false
   // (optimized away by synthesis).
@@ -432,7 +432,7 @@ module router
     if (!i_arst_n)
       o_northValid <= '0;
     else
-      o_northValid <= northValid;
+      o_northValid <= northValid && !(o_northValid && i_northReady);
 
   // For edge routers at row 0, comparison is always false
   // (optimized away by synthesis).
