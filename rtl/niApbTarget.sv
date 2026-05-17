@@ -101,11 +101,11 @@ module niApbTarget
 
   always_comb
     reqSrcRow_d = i_routerToNi[(4*COORD_WIDTH + 2*NI_ID_WIDTH)-1
-                               -: COORD_WIDTH];
+                                -: COORD_WIDTH];
 
   always_comb
     reqSrcCol_d = i_routerToNi[(3*COORD_WIDTH + 2*NI_ID_WIDTH)-1
-                               -: COORD_WIDTH];
+                                -: COORD_WIDTH];
   // }}} Extract source coordinates
 
   // {{{ Extract and latch source NI ID (when MAX_NI_PER_ROUTER > 1)
@@ -118,7 +118,7 @@ module niApbTarget
 
     always_comb
       reqSrcNiId_d = i_routerToNi[(4*COORD_WIDTH + 2*NI_ID_WIDTH)-1
-                                   -: NI_ID_WIDTH];
+                                    -: NI_ID_WIDTH];
 
     always_ff @(posedge i_clk or negedge i_arst_n)
       if (!i_arst_n)
@@ -253,9 +253,8 @@ module niApbTarget
     logic niIdMatch;
 
     always_comb
-      niIdMatch = (i_routerToNi[(2*COORD_WIDTH + NI_ID_WIDTH)-1
-                                -: NI_ID_WIDTH]
-                   == NI_ID_WIDTH'(NI_ID));
+      niIdMatch = (i_routerToNi[(2*COORD_WIDTH + NI_ID_WIDTH)-1 -: NI_ID_WIDTH]
+                  == NI_ID_WIDTH'(NI_ID));
 
     always_comb
       if (state_q == ST_IDLE && niIdMatch)
