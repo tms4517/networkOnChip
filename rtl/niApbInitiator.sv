@@ -21,14 +21,15 @@ module niApbInitiator
 , parameter ty_ADDR_MAP_ENTRY [NUM_ADDR_MAP_ENTRIES-1:0] ADDR_MAP = '0
 , parameter int unsigned SRC_ROW                                  = 0
 , parameter int unsigned SRC_COL                                  = 0
-, parameter int unsigned MAX_INITIATORS_PER_ROUTER      = pa_noc::MAX_INITIATORS_PER_ROUTER
-, parameter int unsigned INITIATOR_ID                             = 0
+, parameter int unsigned MAX_NI_PER_ROUTER            = pa_noc::MAX_NI_PER_ROUTER
+, parameter int unsigned NI_ID                                    = 0
 
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
-, localparam int unsigned ID_WIDTH      = (MAX_INITIATORS_PER_ROUTER > 1) ?
-                                          $clog2(MAX_INITIATORS_PER_ROUTER) : 0
+, localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1) ?
+                                          $clog2(MAX_NI_PER_ROUTER) : 0
 , localparam int unsigned PAYLOAD_WIDTH = APB_PAYLOAD_WIDTH
-, localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + ID_WIDTH + (COORD_WIDTH * 4)
+, localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
+                                          + (COORD_WIDTH * 4)
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n
@@ -61,10 +62,11 @@ module niApbInitiator
   // The address map is statically configured via the ADDR_MAP parameter
   // which is a packed array of pa_noc::ty_ADDR_MAP_ENTRY structs.
   // Each entry holds:
-  //   baseAddr  — inclusive lower bound of the address range
-  //   endAddr   — inclusive upper bound of the address range
-  //   dstRow    — destination router row (lower COORD_WIDTH bits are used)
-  //   dstCol    — destination router column (lower COORD_WIDTH bits are used)
+  //   baseAddr — inclusive lower bound of the address range
+  //   endAddr  — inclusive upper bound of the address range
+  //   dstRow   — destination router row (lower COORD_WIDTH bits are used)
+  //   dstCol   — destination router column (lower COORD_WIDTH bits are used)
+  //   dstNiId  — destination NI ID (when MAX_NI_PER_ROUTER > 1)
   // Entries are checked from index 0 upward; the first matching entry wins.
   // If no entry matches, the packet is not forwarded (o_niToRouterValid is low)
   // and the APB transaction completes with a SLVERR response.
@@ -76,21 +78,46 @@ module niApbInitiator
   /* svlint off sequential_block_in_always_comb */
   /* svlint off loop_statement_in_always_comb */
   /* svlint off explicit_if_else */
-  always_comb begin
-    addrHit = 1'b0;
-    dstRow  = '0;
-    dstCol  = '0;
+  if (NI_ID_WIDTH > 0)
+  begin: gen_addr_decode_with_id
+    logic [NI_ID_WIDTH-1:0] dstNiId;
 
-    for (int i = 0; i < NUM_ADDR_MAP_ENTRIES; i++) begin
-      if (!addrHit
-          && (i_paddr >= ADDR_MAP[i].baseAddr)
-          && (i_paddr <= ADDR_MAP[i].endAddr)) begin
-        addrHit = 1'b1;
-        dstRow  = COORD_WIDTH'(ADDR_MAP[i].dstRow);
-        dstCol  = COORD_WIDTH'(ADDR_MAP[i].dstCol);
+    always_comb begin
+      addrHit  = 1'b0;
+      dstRow   = '0;
+      dstCol   = '0;
+      dstNiId  = '0;
+
+      for (int i = 0; i < NUM_ADDR_MAP_ENTRIES; i++) begin
+        if (!addrHit
+            && (i_paddr >= ADDR_MAP[i].baseAddr)
+            && (i_paddr <= ADDR_MAP[i].endAddr)) begin
+          addrHit = 1'b1;
+          dstRow  = COORD_WIDTH'(ADDR_MAP[i].dstRow);
+          dstCol  = COORD_WIDTH'(ADDR_MAP[i].dstCol);
+          dstNiId = NI_ID_WIDTH'(ADDR_MAP[i].dstNiId);
+        end
       end
     end
-  end
+  end: gen_addr_decode_with_id
+  else
+  begin: gen_addr_decode_no_id
+    always_comb begin
+      addrHit = 1'b0;
+      dstRow  = '0;
+      dstCol  = '0;
+
+      for (int i = 0; i < NUM_ADDR_MAP_ENTRIES; i++) begin
+        if (!addrHit
+            && (i_paddr >= ADDR_MAP[i].baseAddr)
+            && (i_paddr <= ADDR_MAP[i].endAddr)) begin
+          addrHit = 1'b1;
+          dstRow  = COORD_WIDTH'(ADDR_MAP[i].dstRow);
+          dstCol  = COORD_WIDTH'(ADDR_MAP[i].dstCol);
+        end
+      end
+    end
+  end: gen_addr_decode_no_id
   /* svlint on explicit_if_else */
   /* svlint on loop_statement_in_always_comb */
   /* svlint on sequential_block_in_always_comb */
@@ -107,11 +134,9 @@ module niApbInitiator
   always_comb
     apbPayload = {i_paddr, i_pwdata, i_pwrite, i_pstrb};
 
-  // Full NoC packet: payload in upper bits, coordinates in lower bits
-  // -----------------------------------------------------------------
-  // | PAYLOAD | InitID (ID_WIDTH) | srcRow | srcCol | dstRow | dstCol |
-  // -----------------------------------------------------------------
-  // When MAX_INITIATORS_PER_ROUTER = 1, ID_WIDTH = 0 and no ID field exists.
+  // Full NoC packet layout (MSB to LSB):
+  // {Payload, srcNiId, srcRow, srcCol, dstNiId, dstRow, dstCol}
+  // When MAX_NI_PER_ROUTER = 1, NI_ID_WIDTH = 0 and no ID fields exist.
   logic [COORD_WIDTH-1:0] srcRow;
   logic [COORD_WIDTH-1:0] srcCol;
 
@@ -121,19 +146,25 @@ module niApbInitiator
   always_comb
     srcCol = COORD_WIDTH'(SRC_COL);
 
-  if (ID_WIDTH > 0) begin: gen_with_id
-    logic [ID_WIDTH-1:0] initiatorId;
+  if (NI_ID_WIDTH > 0)
+  begin: gen_with_ids
+    logic [NI_ID_WIDTH-1:0] srcNiId;
+    logic [NI_ID_WIDTH-1:0] dstNiId;
 
     always_comb
-      initiatorId = ID_WIDTH'(INITIATOR_ID);
+      srcNiId = NI_ID_WIDTH'(NI_ID);
 
     always_comb
-      o_niToRouter = {apbPayload, initiatorId, srcRow, srcCol, dstRow, dstCol};
-  end: gen_with_id
-  else begin: gen_no_id
+      dstNiId = gen_addr_decode_with_id.dstNiId;
+
+    always_comb
+      o_niToRouter = {apbPayload, srcNiId, srcRow, srcCol, dstNiId, dstRow, dstCol};
+  end: gen_with_ids
+  else
+  begin: gen_no_ids
     always_comb
       o_niToRouter = {apbPayload, srcRow, srcCol, dstRow, dstCol};
-  end: gen_no_id
+  end: gen_no_ids
   // }}} Pack APB Payload
 
   // {{{ Handshake / flow control
