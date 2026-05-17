@@ -16,7 +16,6 @@
 `default_nettype none
 
 module niApbTarget
-  import pa_noc::*;
 #(parameter int unsigned GRID_WIDTH        = 4
 , parameter int unsigned MY_ROW            = 0
 , parameter int unsigned MY_COL            = 0

@@ -15,13 +15,12 @@
 `default_nettype none
 
 module niApbInitiator
-  import pa_noc::*;
 #(parameter int unsigned GRID_WIDTH                               = 4
 , parameter int unsigned NUM_ADDR_MAP_ENTRIES                     = GRID_WIDTH * GRID_WIDTH
 , parameter ty_ADDR_MAP_ENTRY [NUM_ADDR_MAP_ENTRIES-1:0] ADDR_MAP = '0
 , parameter int unsigned SRC_ROW                                  = 0
 , parameter int unsigned SRC_COL                                  = 0
-, parameter int unsigned MAX_NI_PER_ROUTER            = pa_noc::MAX_NI_PER_ROUTER
+, parameter int unsigned MAX_NI_PER_ROUTER                        = pa_noc::MAX_NI_PER_ROUTER
 , parameter int unsigned NI_ID                                    = 0
 
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
