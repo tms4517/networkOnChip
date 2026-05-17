@@ -21,10 +21,14 @@ module niApbInitiator
 , parameter ty_ADDR_MAP_ENTRY [NUM_ADDR_MAP_ENTRIES-1:0] ADDR_MAP = '0
 , parameter int unsigned SRC_ROW                                  = 0
 , parameter int unsigned SRC_COL                                  = 0
+, parameter int unsigned MAX_INITIATORS_PER_ROUTER      = pa_noc::MAX_INITIATORS_PER_ROUTER
+, parameter int unsigned INITIATOR_ID                             = 0
 
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
+, localparam int unsigned ID_WIDTH      = (MAX_INITIATORS_PER_ROUTER > 1) ?
+                                          $clog2(MAX_INITIATORS_PER_ROUTER) : 0
 , localparam int unsigned PAYLOAD_WIDTH = APB_PAYLOAD_WIDTH
-, localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (COORD_WIDTH * 4)
+, localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + ID_WIDTH + (COORD_WIDTH * 4)
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n
@@ -104,10 +108,10 @@ module niApbInitiator
     apbPayload = {i_paddr, i_pwdata, i_pwrite, i_pstrb};
 
   // Full NoC packet: payload in upper bits, coordinates in lower bits
-  // For a 4x4 grid:
   // -----------------------------------------------------------------
-  // | PAYLOAD (69 bits) | srcRow | srcCol | dstRow | dstCol          |
+  // | PAYLOAD | InitID (ID_WIDTH) | srcRow | srcCol | dstRow | dstCol |
   // -----------------------------------------------------------------
+  // When MAX_INITIATORS_PER_ROUTER = 1, ID_WIDTH = 0 and no ID field exists.
   logic [COORD_WIDTH-1:0] srcRow;
   logic [COORD_WIDTH-1:0] srcCol;
 
@@ -117,8 +121,19 @@ module niApbInitiator
   always_comb
     srcCol = COORD_WIDTH'(SRC_COL);
 
-  always_comb
-    o_niToRouter = {apbPayload, srcRow, srcCol, dstRow, dstCol};
+  if (ID_WIDTH > 0) begin: gen_with_id
+    logic [ID_WIDTH-1:0] initiatorId;
+
+    always_comb
+      initiatorId = ID_WIDTH'(INITIATOR_ID);
+
+    always_comb
+      o_niToRouter = {apbPayload, initiatorId, srcRow, srcCol, dstRow, dstCol};
+  end: gen_with_id
+  else begin: gen_no_id
+    always_comb
+      o_niToRouter = {apbPayload, srcRow, srcCol, dstRow, dstCol};
+  end: gen_no_id
   // }}} Pack APB Payload
 
   // {{{ Handshake / flow control

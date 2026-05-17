@@ -13,6 +13,12 @@ package pa_noc;
 
   localparam int unsigned NUM_INPUT_FIFOS = 5;
 
+  // Maximum number of APB initiators that can share a single router NI port.
+  // When > 1, an initiator ID field is added to the packet format so the
+  // target NI can echo it back in responses for correct demuxing.
+  // ID_WIDTH = $clog2(MAX_INITIATORS_PER_ROUTER); 0 when MAX = 1 (no overhead).
+  localparam int unsigned MAX_INITIATORS_PER_ROUTER = 1;
+
   // Address map entry: maps an address range to a NoC destination node.
   // dstRow/dstCol are stored as 8-bit fields so this struct is independent of
   // GRID_WIDTH; the NI module masks them down to COORD_WIDTH bits at use.

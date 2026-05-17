@@ -17,13 +17,16 @@
 
 module niApbTarget
   import pa_noc::*;
-#(parameter int unsigned GRID_WIDTH    = 4
-, parameter int unsigned MY_ROW        = 0
-, parameter int unsigned MY_COL        = 0
+#(parameter int unsigned GRID_WIDTH                = 4
+, parameter int unsigned MY_ROW                    = 0
+, parameter int unsigned MY_COL                    = 0
+, parameter int unsigned MAX_INITIATORS_PER_ROUTER = pa_noc::MAX_INITIATORS_PER_ROUTER
 
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
+, localparam int unsigned ID_WIDTH      = (MAX_INITIATORS_PER_ROUTER > 1) ?
+                                          $clog2(MAX_INITIATORS_PER_ROUTER) : 0
 , localparam int unsigned PAYLOAD_WIDTH = APB_PAYLOAD_WIDTH
-, localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (COORD_WIDTH * 4)
+, localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + ID_WIDTH + (COORD_WIDTH * 4)
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n
@@ -89,17 +92,36 @@ module niApbTarget
   // }}} Unpack APB Payload
 
   // {{{ Extract source coordinates from incoming packet
-  // Packet layout: {payload, srcRow, srcCol, dstRow, dstCol}
-  // Source coords sit at bits [4*COORD_WIDTH-1 : 2*COORD_WIDTH]
+  // Packet layout: {payload, [initiatorID], srcRow, srcCol, dstRow, dstCol}
+  // Source coords sit at bits [4*COORD_WIDTH + ID_WIDTH - 1 : 2*COORD_WIDTH + ID_WIDTH]
   logic [COORD_WIDTH-1:0] reqSrcRow_d;
   logic [COORD_WIDTH-1:0] reqSrcCol_d;
 
   always_comb
-    reqSrcRow_d = i_routerToNi[4*COORD_WIDTH-1 -: COORD_WIDTH];
+    reqSrcRow_d = i_routerToNi[(4*COORD_WIDTH + ID_WIDTH)-1 -: COORD_WIDTH];
 
   always_comb
-    reqSrcCol_d = i_routerToNi[3*COORD_WIDTH-1 -: COORD_WIDTH];
+    reqSrcCol_d = i_routerToNi[(3*COORD_WIDTH + ID_WIDTH)-1 -: COORD_WIDTH];
   // }}} Extract source coordinates
+
+  // {{{ Extract and latch initiator ID (when multiple initiators per router)
+  // ID sits at bits [(4*COORD_WIDTH + ID_WIDTH)-1 : 4*COORD_WIDTH] in the packet
+  if (ID_WIDTH > 0) begin: gen_id
+    logic [ID_WIDTH-1:0] reqInitId_d;
+    logic [ID_WIDTH-1:0] reqInitId_q;
+
+    always_comb
+      reqInitId_d = i_routerToNi[(4*COORD_WIDTH + ID_WIDTH)-1 -: ID_WIDTH];
+
+    always_ff @(posedge i_clk or negedge i_arst_n)
+      if (!i_arst_n)
+        reqInitId_q <= '0;
+      else if (state_q == ST_IDLE && i_routerToNiValid)
+        reqInitId_q <= reqInitId_d;
+      else
+        reqInitId_q <= reqInitId_q;
+  end: gen_id
+  // }}} Extract and latch initiator ID
 
   // {{{ Flop incoming request fields
   // To ensure they remain stable across APB phases
@@ -227,6 +249,7 @@ module niApbTarget
   // Response payload: {PADDR, PRDATA, PWRITE=0, PSTRB=0}
   // Response destination = request's source coords (dynamic routing).
   // Response source = this target's own position (MY_ROW, MY_COL).
+  // Response initiator ID = echoed from request (when ID_WIDTH > 0).
   logic [PAYLOAD_WIDTH-1:0] respPayload;
   logic [COORD_WIDTH-1:0]   respSrcRow;
   logic [COORD_WIDTH-1:0]   respSrcCol;
@@ -240,8 +263,25 @@ module niApbTarget
   always_comb
     respSrcCol = COORD_WIDTH'(MY_COL);
 
-  always_comb
-    o_niToRouter = {respPayload, respSrcRow, respSrcCol, reqSrcRow_q, reqSrcCol_q};
+  if (ID_WIDTH > 0) begin: gen_resp_with_id
+    always_comb
+      o_niToRouter =  { respPayload
+                      , gen_id.reqInitId_q
+                      , respSrcRow
+                      , respSrcCol
+                      , reqSrcRow_q
+                      , reqSrcCol_q
+                      };
+  end: gen_resp_with_id
+  else begin: gen_resp_no_id
+    always_comb
+      o_niToRouter =  { respPayload
+                      , respSrcRow
+                      , respSrcCol
+                      , reqSrcRow_q
+                      , reqSrcCol_q
+                      };
+  end: gen_resp_no_id
 
   // Drive response valid only in the RESP state.
   always_comb
