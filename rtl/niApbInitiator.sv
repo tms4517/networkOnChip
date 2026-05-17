@@ -19,10 +19,12 @@ module niApbInitiator
 #(parameter int unsigned GRID_WIDTH                               = 4
 , parameter int unsigned NUM_ADDR_MAP_ENTRIES                     = GRID_WIDTH * GRID_WIDTH
 , parameter ty_ADDR_MAP_ENTRY [NUM_ADDR_MAP_ENTRIES-1:0] ADDR_MAP = '0
+, parameter int unsigned SRC_ROW                                  = 0
+, parameter int unsigned SRC_COL                                  = 0
 
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
 , localparam int unsigned PAYLOAD_WIDTH = APB_PAYLOAD_WIDTH
-, localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (COORD_WIDTH * 2)
+, localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (COORD_WIDTH * 4)
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n
@@ -103,12 +105,20 @@ module niApbInitiator
 
   // Full NoC packet: payload in upper bits, coordinates in lower bits
   // For a 4x4 grid:
-  // -------------------------------------------------------
-  // | PAYLOAD (PAYLOAD_WIDTH-1 : 0) | dstRow | dstCol    |
-  // | [APB_PAYLOAD_WIDTH-1 : 0]     | [1:0]  | [1:0]     |
-  // -------------------------------------------------------
+  // -----------------------------------------------------------------
+  // | PAYLOAD (69 bits) | srcRow | srcCol | dstRow | dstCol          |
+  // -----------------------------------------------------------------
+  logic [COORD_WIDTH-1:0] srcRow;
+  logic [COORD_WIDTH-1:0] srcCol;
+
   always_comb
-    o_niToRouter = {apbPayload, dstRow, dstCol};
+    srcRow = COORD_WIDTH'(SRC_ROW);
+
+  always_comb
+    srcCol = COORD_WIDTH'(SRC_COL);
+
+  always_comb
+    o_niToRouter = {apbPayload, srcRow, srcCol, dstRow, dstCol};
   // }}} Pack APB Payload
 
   // {{{ Handshake / flow control
