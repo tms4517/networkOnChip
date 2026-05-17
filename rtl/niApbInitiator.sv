@@ -17,7 +17,7 @@
 module niApbInitiator
 #(parameter int unsigned GRID_WIDTH                               = 4
 , parameter int unsigned NUM_ADDR_MAP_ENTRIES                     = GRID_WIDTH * GRID_WIDTH
-, parameter ty_ADDR_MAP_ENTRY [NUM_ADDR_MAP_ENTRIES-1:0] ADDR_MAP = '0
+, parameter pa_noc::ty_ADDR_MAP_ENTRY [NUM_ADDR_MAP_ENTRIES-1:0] ADDR_MAP = '0
 , parameter int unsigned SRC_ROW                                  = 0
 , parameter int unsigned SRC_COL                                  = 0
 , parameter int unsigned MAX_NI_PER_ROUTER                        = pa_noc::MAX_NI_PER_ROUTER
@@ -26,7 +26,7 @@ module niApbInitiator
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
 , localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1) ?
                                           $clog2(MAX_NI_PER_ROUTER) : 0
-, localparam int unsigned PAYLOAD_WIDTH = APB_PAYLOAD_WIDTH
+, localparam int unsigned PAYLOAD_WIDTH = pa_noc::APB_PAYLOAD_WIDTH
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
                                           + (COORD_WIDTH * 4)
 )
