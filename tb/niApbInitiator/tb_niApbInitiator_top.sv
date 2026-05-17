@@ -7,14 +7,16 @@
 `default_nettype none
 
 module tb_niApbInitiator_top
-  import pa_noc::*;
-#(parameter int unsigned GRID_WIDTH   = 4
-, parameter int unsigned SRC_ROW      = 0
-, parameter int unsigned SRC_COL      = 0
+#(parameter int unsigned GRID_WIDTH        = 4
+, parameter int unsigned SRC_ROW           = 0
+, parameter int unsigned SRC_COL           = 0
+, parameter int unsigned MAX_NI_PER_ROUTER = pa_noc::MAX_NI_PER_ROUTER
+, parameter int unsigned NI_ID             = 0
 
 , localparam int unsigned COORD_WIDTH    = $clog2(GRID_WIDTH)
-, localparam int unsigned PAYLOAD_WIDTH  = APB_PAYLOAD_WIDTH
-, localparam int unsigned PACKET_WIDTH   = PAYLOAD_WIDTH + (COORD_WIDTH * 4)
+, localparam int unsigned NI_ID_WIDTH    = (MAX_NI_PER_ROUTER > 1) ? $clog2(MAX_NI_PER_ROUTER) : 0
+, localparam int unsigned PAYLOAD_WIDTH  = pa_noc::APB_PAYLOAD_WIDTH
+, localparam int unsigned PACKET_WIDTH   = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH) + (COORD_WIDTH * 4)
 , localparam int unsigned NUM_ROUTERS    = GRID_WIDTH * GRID_WIDTH
 )
 ( input  var logic i_clk
@@ -44,27 +46,31 @@ module tb_niApbInitiator_top
   // Entry 3: 0x3000_0000 – 0x3FFF_FFFF → router (GRID_WIDTH-1, GRID_WIDTH-1)
   localparam int unsigned NUM_ENTRIES = 4;
 
-  localparam ty_ADDR_MAP_ENTRY [NUM_ENTRIES-1:0] ADDR_MAP =
+  localparam pa_noc::ty_ADDR_MAP_ENTRY [NUM_ENTRIES-1:0] ADDR_MAP =
     '{
       '{baseAddr: 32'h3000_0000
       , endAddr: 32'h3FFF_FFFF
       , dstRow: 8'(GRID_WIDTH-1)
       , dstCol: 8'(GRID_WIDTH-1)
+      , dstNiId: 8'd0
       },
       '{baseAddr: 32'h2000_0000
       , endAddr: 32'h2FFF_FFFF
       , dstRow: 8'd1
       , dstCol: 8'd1
+      , dstNiId: 8'd0
       },
       '{baseAddr: 32'h1000_0000
       , endAddr: 32'h1FFF_FFFF
       , dstRow: 8'd1
       , dstCol: 8'd0
+      , dstNiId: 8'd0
       },
       '{baseAddr: 32'h0000_0000
       , endAddr: 32'h0FFF_FFFF
       , dstRow: 8'd0
       , dstCol: 8'd1
+      , dstNiId: 8'd0
       }
     };
   // }}} Address map
@@ -89,11 +95,13 @@ module tb_niApbInitiator_top
   // }}} Interconnects
 
   niApbInitiator
-  #(.GRID_WIDTH          (GRID_WIDTH)
-  , .NUM_ADDR_MAP_ENTRIES(NUM_ENTRIES)
-  , .ADDR_MAP            (ADDR_MAP)
-  , .SRC_ROW             (SRC_ROW)
-  , .SRC_COL             (SRC_COL)
+  #(.GRID_WIDTH        (GRID_WIDTH)
+  , .NUM_ADDR_MAP_ENTRIES (NUM_ENTRIES)
+  , .ADDR_MAP          (ADDR_MAP)
+  , .SRC_ROW           (SRC_ROW)
+  , .SRC_COL           (SRC_COL)
+  , .MAX_NI_PER_ROUTER (MAX_NI_PER_ROUTER)
+  , .NI_ID             (NI_ID)
   ) u_niApbInitiator
   ( .i_clk     (i_clk)
   , .i_arst_n  (i_arst_n)

@@ -12,3 +12,6 @@ tb/*.gtkw
 
 # Ignore verilator generated files.
 tb/*.verilate
+
+# Ignore generated logs
+logs

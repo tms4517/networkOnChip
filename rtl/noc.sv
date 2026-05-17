@@ -1,18 +1,30 @@
 // Top level module.
 
-// Default: APB Packet Definition (4x4 grid, COORD_WIDTH=2)
+// Default: APB Packet Definition (4x4 grid, COORD_WIDTH=2, MAX_NI_PER_ROUTER=1)
 // ---------------------------------------------------------------------------------
 // |76                             8|7    6|5    4|3              2|1              0|
 // |       Payload (69 bits)        |SrcRow|SrcCol|Dst Row (2 bits)|Dst Col (2 bits)|
 // ---------------------------------------------------------------------------------
+//
+// When MAX_NI_PER_ROUTER > 1, NI ID fields are inserted into the packet:
+// -------------------------------------------------------------------------------------
+// |Payload|SrcNiId|SrcRow|SrcCol|DstNiId|DstRow|DstCol|
+// -------------------------------------------------------------------------------------
+// NI_ID_WIDTH = $clog2(MAX_NI_PER_ROUTER), 0 when MAX = 1
 
 `default_nettype none
 
 module noc
-#(parameter int unsigned GRID_WIDTH = 4
-, parameter int unsigned PAYLOAD_WIDTH = pa_noc::APB_PAYLOAD_WIDTH
+#(parameter int unsigned GRID_WIDTH         = 4
+, parameter int unsigned PAYLOAD_WIDTH      = pa_noc::APB_PAYLOAD_WIDTH
 , parameter int unsigned FIFO_ADDRESS_WIDTH = pa_noc::FIFO_ADDRESS_W
-, localparam int unsigned PACKET_WIDTH = PAYLOAD_WIDTH + ($clog2(GRID_WIDTH) * 4)
+, parameter int unsigned MAX_NI_PER_ROUTER  = pa_noc::MAX_NI_PER_ROUTER
+
+, localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
+, localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1)
+                                          ? $clog2(MAX_NI_PER_ROUTER) : 0
+, localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
+                                          + (COORD_WIDTH * 4)
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n

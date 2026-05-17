@@ -13,14 +13,23 @@ package pa_noc;
 
   localparam int unsigned NUM_INPUT_FIFOS = 5;
 
+  // Maximum number of NIs (initiators or targets) that can share a single
+  // router port. When > 1, NI ID fields are added to the packet format:
+  //   - Source NI ID: identifies the initiator, echoed in responses
+  //   - Destination NI ID: selects the target at the destination router
+  // NI_ID_WIDTH = $clog2(MAX_NI_PER_ROUTER); 0 when MAX = 1 (no overhead).
+  localparam int unsigned MAX_NI_PER_ROUTER = 1;
+
   // Address map entry: maps an address range to a NoC destination node.
   // dstRow/dstCol are stored as 8-bit fields so this struct is independent of
   // GRID_WIDTH; the NI module masks them down to COORD_WIDTH bits at use.
+  // dstNiId selects which target NI at the destination router (when multiple).
   typedef struct packed {
     logic [31:0] baseAddr; // Inclusive lower bound of address range
     logic [31:0] endAddr;  // Inclusive upper bound of address range
     logic [7:0]  dstRow;   // Destination router row
     logic [7:0]  dstCol;   // Destination router column
+    logic [7:0]  dstNiId;  // Destination NI ID (0 when single target)
   } ty_ADDR_MAP_ENTRY;
 
   typedef enum bit [2:0]

@@ -16,14 +16,18 @@
 `default_nettype none
 
 module niApbTarget
-  import pa_noc::*;
-#(parameter int unsigned GRID_WIDTH    = 4
-, parameter int unsigned MY_ROW        = 0
-, parameter int unsigned MY_COL        = 0
+#(parameter int unsigned GRID_WIDTH        = 4
+, parameter int unsigned MY_ROW            = 0
+, parameter int unsigned MY_COL            = 0
+, parameter int unsigned MAX_NI_PER_ROUTER = pa_noc::MAX_NI_PER_ROUTER
+, parameter int unsigned NI_ID             = 0
 
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
-, localparam int unsigned PAYLOAD_WIDTH = APB_PAYLOAD_WIDTH
-, localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (COORD_WIDTH * 4)
+, localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1) ?
+                                          $clog2(MAX_NI_PER_ROUTER) : 0
+, localparam int unsigned PAYLOAD_WIDTH = pa_noc::APB_PAYLOAD_WIDTH
+, localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
+                                          + (COORD_WIDTH * 4)
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n
@@ -89,17 +93,41 @@ module niApbTarget
   // }}} Unpack APB Payload
 
   // {{{ Extract source coordinates from incoming packet
-  // Packet layout: {payload, srcRow, srcCol, dstRow, dstCol}
-  // Source coords sit at bits [4*COORD_WIDTH-1 : 2*COORD_WIDTH]
+  // Packet layout: {payload, srcNiId, srcRow, srcCol, dstNiId, dstRow, dstCol}
+  // When NI_ID_WIDTH = 0, IDs are absent.
   logic [COORD_WIDTH-1:0] reqSrcRow_d;
   logic [COORD_WIDTH-1:0] reqSrcCol_d;
 
   always_comb
-    reqSrcRow_d = i_routerToNi[4*COORD_WIDTH-1 -: COORD_WIDTH];
+    reqSrcRow_d = i_routerToNi[(4*COORD_WIDTH + 2*NI_ID_WIDTH)-1
+                                -: COORD_WIDTH];
 
   always_comb
-    reqSrcCol_d = i_routerToNi[3*COORD_WIDTH-1 -: COORD_WIDTH];
+    reqSrcCol_d = i_routerToNi[(3*COORD_WIDTH + 2*NI_ID_WIDTH)-1
+                                -: COORD_WIDTH];
   // }}} Extract source coordinates
+
+  // {{{ Extract and latch source NI ID (when MAX_NI_PER_ROUTER > 1)
+  // srcNiId sits at [(4*COORD_WIDTH + 2*NI_ID_WIDTH)-1 :
+  //                   4*COORD_WIDTH + NI_ID_WIDTH]
+  if (NI_ID_WIDTH > 0)
+  begin: gen_id
+    logic [NI_ID_WIDTH-1:0] reqSrcNiId_d;
+    logic [NI_ID_WIDTH-1:0] reqSrcNiId_q;
+
+    always_comb
+      reqSrcNiId_d = i_routerToNi[(4*COORD_WIDTH + 2*NI_ID_WIDTH)-1
+                                    -: NI_ID_WIDTH];
+
+    always_ff @(posedge i_clk or negedge i_arst_n)
+      if (!i_arst_n)
+        reqSrcNiId_q <= '0;
+      else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
+        reqSrcNiId_q <= reqSrcNiId_d;
+      else
+        reqSrcNiId_q <= reqSrcNiId_q;
+  end: gen_id
+  // }}} Extract and latch source NI ID
 
   // {{{ Flop incoming request fields
   // To ensure they remain stable across APB phases
@@ -113,7 +141,7 @@ module niApbTarget
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
       paddr_q  <= '0;
-    else if (state_q == ST_IDLE && i_routerToNiValid)
+    else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
       paddr_q  <= paddr_d;
     else
       paddr_q  <= paddr_q;
@@ -121,7 +149,7 @@ module niApbTarget
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
       pwdata_q <= '0;
-    else if (state_q == ST_IDLE && i_routerToNiValid)
+    else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
       pwdata_q <= pwdata_d;
     else
       pwdata_q <= pwdata_q;
@@ -129,7 +157,7 @@ module niApbTarget
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
       pwrite_q <= '0;
-    else if (state_q == ST_IDLE && i_routerToNiValid)
+    else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
       pwrite_q <= pwrite_d;
     else
       pwrite_q <= pwrite_q;
@@ -137,7 +165,7 @@ module niApbTarget
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
       pstrb_q  <= '0;
-    else if (state_q == ST_IDLE && i_routerToNiValid)
+    else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
       pstrb_q  <= pstrb_d;
     else
       pstrb_q  <= pstrb_q;
@@ -145,7 +173,7 @@ module niApbTarget
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
       reqSrcRow_q <= '0;
-    else if (state_q == ST_IDLE && i_routerToNiValid)
+    else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
       reqSrcRow_q <= reqSrcRow_d;
     else
       reqSrcRow_q <= reqSrcRow_q;
@@ -153,7 +181,7 @@ module niApbTarget
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
       reqSrcCol_q <= '0;
-    else if (state_q == ST_IDLE && i_routerToNiValid)
+    else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
       reqSrcCol_q <= reqSrcCol_d;
     else
       reqSrcCol_q <= reqSrcCol_q;
@@ -169,7 +197,8 @@ module niApbTarget
   always_comb
     case (state_q)
       ST_IDLE:
-        state_d = i_routerToNiValid ? ST_APB_SETUP : ST_IDLE;
+        state_d = (i_routerToNiValid && o_routerToNiReady)
+                  ? ST_APB_SETUP : ST_IDLE;
       ST_APB_SETUP:
         state_d = ST_APB_ACCESS;
       ST_APB_ACCESS:
@@ -216,17 +245,37 @@ module niApbTarget
   // }}} APB master outputs
 
   // {{{ NoC handshake
-  // Accept a request packet only when idle.
-  always_comb
-    if (state_q == ST_IDLE)
-      o_routerToNiReady = 1'b1;
-    else
-      o_routerToNiReady = 1'b0;
+  // Accept a request packet only when idle and destination NI ID matches
+  // (if applicable).
+  if (NI_ID_WIDTH > 0)
+  begin: gen_ni_filter
+    logic niIdMatch;
+
+    always_comb
+      niIdMatch = (i_routerToNi[(2*COORD_WIDTH + NI_ID_WIDTH)-1 -: NI_ID_WIDTH]
+                  == NI_ID_WIDTH'(NI_ID));
+
+    always_comb
+      if (state_q == ST_IDLE && niIdMatch)
+        o_routerToNiReady = 1'b1;
+      else
+        o_routerToNiReady = 1'b0;
+  end: gen_ni_filter
+  else
+  begin: gen_no_ni_filter
+    always_comb
+      if (state_q == ST_IDLE)
+        o_routerToNiReady = 1'b1;
+      else
+        o_routerToNiReady = 1'b0;
+  end: gen_no_ni_filter
 
   // Response packet: PRDATA in the PWDATA field position, same encoding.
   // Response payload: {PADDR, PRDATA, PWRITE=0, PSTRB=0}
   // Response destination = request's source coords (dynamic routing).
   // Response source = this target's own position (MY_ROW, MY_COL).
+  // Response srcNiId = echoed from request (initiator's NI_ID).
+  // Response dstNiId = request source's NI_ID (echoed back for demux).
   logic [PAYLOAD_WIDTH-1:0] respPayload;
   logic [COORD_WIDTH-1:0]   respSrcRow;
   logic [COORD_WIDTH-1:0]   respSrcCol;
@@ -240,8 +289,28 @@ module niApbTarget
   always_comb
     respSrcCol = COORD_WIDTH'(MY_COL);
 
-  always_comb
-    o_niToRouter = {respPayload, respSrcRow, respSrcCol, reqSrcRow_q, reqSrcCol_q};
+  if (NI_ID_WIDTH > 0)
+  begin: gen_resp_with_ids
+    always_comb
+      o_niToRouter =  { respPayload
+                      , NI_ID_WIDTH'(NI_ID)
+                      , respSrcRow
+                      , respSrcCol
+                      , gen_id.reqSrcNiId_q
+                      , reqSrcRow_q
+                      , reqSrcCol_q
+                      };
+  end: gen_resp_with_ids
+  else
+  begin: gen_resp_no_ids
+    always_comb
+      o_niToRouter =  { respPayload
+                      , respSrcRow
+                      , respSrcCol
+                      , reqSrcRow_q
+                      , reqSrcCol_q
+                      };
+  end: gen_resp_no_ids
 
   // Drive response valid only in the RESP state.
   always_comb
