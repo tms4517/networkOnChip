@@ -22,7 +22,7 @@
 
 module mesh
 #(parameter int unsigned GRID_WIDTH = 4
-, parameter int unsigned PACKET_WIDTH = 73
+, parameter int unsigned PACKET_WIDTH = 77
 , parameter int unsigned FIFO_ADDRESS_WIDTH = pa_noc::FIFO_ADDRESS_W
 )
 ( input  var logic i_clk

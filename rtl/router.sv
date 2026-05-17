@@ -27,7 +27,7 @@
 module router
   import pa_noc::*;
 #(parameter int unsigned GRID_WIDTH = 4
-, parameter int unsigned PACKET_WIDTH = 73
+, parameter int unsigned PACKET_WIDTH = 77
 , parameter int unsigned FIFO_ADDRESS_WIDTH = pa_noc::FIFO_ADDRESS_W
 , localparam int unsigned COORD_WIDTH = $clog2(GRID_WIDTH)
 , parameter bit [COORD_WIDTH-1:0] ROUTER_ROW = 0

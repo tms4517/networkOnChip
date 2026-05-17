@@ -10,7 +10,7 @@
 `default_nettype none
 
 module arbiter
-#(parameter int unsigned PACKET_WIDTH = 73
+#(parameter int unsigned PACKET_WIDTH = 77
 , localparam int unsigned NUM_INPUT_FIFOS = pa_noc::NUM_INPUT_FIFOS
 )
 ( input  var logic                                         i_clk

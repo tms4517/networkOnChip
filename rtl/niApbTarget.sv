@@ -10,23 +10,20 @@
 //
 // READ transactions: the payload is unpacked, the APB read completes, and a
 // response packet carrying PRDATA (in the PWDATA field position) is sent back
-// through the NoC to the initiator.  The response destination is specified by
-// the RESP_DST_ROW / RESP_DST_COL parameters.
-//
-// NOTE: For systems with multiple initiators, source-routing coordinates should
-// be added to the NoC packet format so responses can be dynamically routed.
+// through the NoC to the initiator.  The response destination is extracted from
+// the source coordinates embedded in the incoming request packet.
 
 `default_nettype none
 
 module niApbTarget
   import pa_noc::*;
 #(parameter int unsigned GRID_WIDTH    = 4
-, parameter int unsigned RESP_DST_ROW  = 0
-, parameter int unsigned RESP_DST_COL  = 0
+, parameter int unsigned MY_ROW        = 0
+, parameter int unsigned MY_COL        = 0
 
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
 , localparam int unsigned PAYLOAD_WIDTH = APB_PAYLOAD_WIDTH
-, localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (COORD_WIDTH * 2)
+, localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (COORD_WIDTH * 4)
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n
@@ -91,12 +88,27 @@ module niApbTarget
     pstrb_d  = reqPayload[3:0];
   // }}} Unpack APB Payload
 
+  // {{{ Extract source coordinates from incoming packet
+  // Packet layout: {payload, srcRow, srcCol, dstRow, dstCol}
+  // Source coords sit at bits [4*COORD_WIDTH-1 : 2*COORD_WIDTH]
+  logic [COORD_WIDTH-1:0] reqSrcRow_d;
+  logic [COORD_WIDTH-1:0] reqSrcCol_d;
+
+  always_comb
+    reqSrcRow_d = i_routerToNi[4*COORD_WIDTH-1 -: COORD_WIDTH];
+
+  always_comb
+    reqSrcCol_d = i_routerToNi[3*COORD_WIDTH-1 -: COORD_WIDTH];
+  // }}} Extract source coordinates
+
   // {{{ Flop incoming request fields
   // To ensure they remain stable across APB phases
   logic [31:0] paddr_q;
   logic [31:0] pwdata_q;
   logic        pwrite_q;
   logic [3:0]  pstrb_q;
+  logic [COORD_WIDTH-1:0] reqSrcRow_q;
+  logic [COORD_WIDTH-1:0] reqSrcCol_q;
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
@@ -129,6 +141,22 @@ module niApbTarget
       pstrb_q  <= pstrb_d;
     else
       pstrb_q  <= pstrb_q;
+
+  always_ff @(posedge i_clk or negedge i_arst_n)
+    if (!i_arst_n)
+      reqSrcRow_q <= '0;
+    else if (state_q == ST_IDLE && i_routerToNiValid)
+      reqSrcRow_q <= reqSrcRow_d;
+    else
+      reqSrcRow_q <= reqSrcRow_q;
+
+  always_ff @(posedge i_clk or negedge i_arst_n)
+    if (!i_arst_n)
+      reqSrcCol_q <= '0;
+    else if (state_q == ST_IDLE && i_routerToNiValid)
+      reqSrcCol_q <= reqSrcCol_d;
+    else
+      reqSrcCol_q <= reqSrcCol_q;
   // }}} Flop incoming request fields
 
   // {{{ FSM
@@ -197,21 +225,23 @@ module niApbTarget
 
   // Response packet: PRDATA in the PWDATA field position, same encoding.
   // Response payload: {PADDR, PRDATA, PWRITE=0, PSTRB=0}
+  // Response destination = request's source coords (dynamic routing).
+  // Response source = this target's own position (MY_ROW, MY_COL).
   logic [PAYLOAD_WIDTH-1:0] respPayload;
-  logic [COORD_WIDTH-1:0]   respDstRow;
-  logic [COORD_WIDTH-1:0]   respDstCol;
+  logic [COORD_WIDTH-1:0]   respSrcRow;
+  logic [COORD_WIDTH-1:0]   respSrcCol;
 
   always_comb
     respPayload = {paddr_q, prdata_q, 1'b0, 4'b0000};
 
   always_comb
-    respDstRow  = COORD_WIDTH'(RESP_DST_ROW);
+    respSrcRow = COORD_WIDTH'(MY_ROW);
 
   always_comb
-    respDstCol  = COORD_WIDTH'(RESP_DST_COL);
+    respSrcCol = COORD_WIDTH'(MY_COL);
 
   always_comb
-    o_niToRouter = {respPayload, respDstRow, respDstCol};
+    o_niToRouter = {respPayload, respSrcRow, respSrcCol, reqSrcRow_q, reqSrcCol_q};
 
   // Drive response valid only in the RESP state.
   always_comb

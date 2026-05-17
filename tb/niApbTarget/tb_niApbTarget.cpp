@@ -26,7 +26,7 @@
 
 #define COORD_WIDTH 2 // clog2(4)
 #define PAYLOAD_WIDTH 69
-#define PACKET_WIDTH (PAYLOAD_WIDTH + COORD_WIDTH * 2) // 73
+#define PACKET_WIDTH (PAYLOAD_WIDTH + COORD_WIDTH * 4) // 77
 
 // Source and destination coordinates (must match SV parameters)
 #define SRC_ROW 0
@@ -39,13 +39,15 @@ vluint64_t posedge_cnt = 0;
 
 // ----------------------------------------------------------------
 // Packet encoding helpers
-// Packet layout (73 bits, LSB first):
+// Packet layout (77 bits, LSB first):
 //   [1:0]   = dstCol
 //   [3:2]   = dstRow
-//   [7:4]   = PSTRB
-//   [8]     = PWRITE
-//   [40:9]  = PWDATA
-//   [72:41] = PADDR
+//   [5:4]   = srcCol
+//   [7:6]   = srcRow
+//   [11:8]  = PSTRB
+//   [12]    = PWRITE
+//   [44:13] = PWDATA
+//   [76:45] = PADDR
 // ----------------------------------------------------------------
 
 struct NocPacket {
@@ -55,9 +57,11 @@ struct NocPacket {
   uint8_t  pstrb;
   int      dst_row;
   int      dst_col;
+  int      src_row;
+  int      src_col;
 };
 
-// Pack a NocPacket into the Verilator wide type (3 x 32-bit words for 73 bits)
+// Pack a NocPacket into the Verilator wide type (3 x 32-bit words for 77 bits)
 static void packPacket(const NocPacket &pkt, WData *out) {
   // Zero out
   out[0] = 0;
@@ -68,20 +72,24 @@ static void packPacket(const NocPacket &pkt, WData *out) {
   out[0] |= (pkt.dst_col & 0x3);
   // [3:2] = dstRow
   out[0] |= ((pkt.dst_row & 0x3) << 2);
-  // [7:4] = PSTRB
-  out[0] |= ((uint32_t)(pkt.pstrb & 0xF) << 4);
-  // [8] = PWRITE
-  out[0] |= ((uint32_t)(pkt.pwrite ? 1 : 0) << 8);
-  // [40:9] = PWDATA (32 bits starting at bit 9)
-  // bits [31:9] of word 0 = pwdata[22:0]
-  out[0] |= (pkt.pwdata << 9);
-  // bits [8:0] of word 1 = pwdata[31:23]
-  out[1] |= (pkt.pwdata >> 23);
-  // [72:41] = PADDR (32 bits starting at bit 41)
-  // bits [31:9] of word 1 = paddr[22:0] starting at bit position 9 of word 1
-  out[1] |= (pkt.paddr << 9);
-  // bits [8:0] of word 2 = paddr[31:23]
-  out[2] |= (pkt.paddr >> 23);
+  // [5:4] = srcCol
+  out[0] |= ((pkt.src_col & 0x3) << 4);
+  // [7:6] = srcRow
+  out[0] |= ((pkt.src_row & 0x3) << 6);
+  // [11:8] = PSTRB
+  out[0] |= ((uint32_t)(pkt.pstrb & 0xF) << 8);
+  // [12] = PWRITE
+  out[0] |= ((uint32_t)(pkt.pwrite ? 1 : 0) << 12);
+  // [44:13] = PWDATA (32 bits starting at bit 13)
+  // bits [31:13] of word 0 = pwdata[18:0]
+  out[0] |= (pkt.pwdata << 13);
+  // bits [12:0] of word 1 = pwdata[31:19]
+  out[1] |= (pkt.pwdata >> 19);
+  // [76:45] = PADDR (32 bits starting at bit 45)
+  // bits [31:13] of word 1 = paddr[18:0] starting at bit position 13 of word 1
+  out[1] |= (pkt.paddr << 13);
+  // bits [12:0] of word 2 = paddr[31:19]
+  out[2] |= (pkt.paddr >> 19);
 }
 
 // Decode response packet from Verilator wide type
@@ -89,10 +97,12 @@ static NocPacket unpackPacket(const WData *in) {
   NocPacket pkt;
   pkt.dst_col = in[0] & 0x3;
   pkt.dst_row = (in[0] >> 2) & 0x3;
-  pkt.pstrb   = (in[0] >> 4) & 0xF;
-  pkt.pwrite  = (in[0] >> 8) & 0x1;
-  pkt.pwdata  = (in[0] >> 9) | ((in[1] & 0x1FF) << 23);
-  pkt.paddr   = (in[1] >> 9) | ((in[2] & 0x1FF) << 23);
+  pkt.src_col = (in[0] >> 4) & 0x3;
+  pkt.src_row = (in[0] >> 6) & 0x3;
+  pkt.pstrb   = (in[0] >> 8) & 0xF;
+  pkt.pwrite  = (in[0] >> 12) & 0x1;
+  pkt.pwdata  = (in[0] >> 13) | ((in[1] & 0x1FFF) << 19);
+  pkt.paddr   = (in[1] >> 13) | ((in[2] & 0x1FFF) << 19);
   return pkt;
 }
 
@@ -119,14 +129,14 @@ int main(int argc, char **argv, char **env) {
   // Test cases
   TestCase tests[] = {
     // WRITE tests: inject write packet destined for (DST_ROW, DST_COL)
-    { {0x00000000, 0xDEADBEEF, true,  0xF, DST_ROW, DST_COL}, 0, "Write reg[0] = 0xDEADBEEF" },
-    { {0x00000004, 0xCAFEBABE, true,  0xF, DST_ROW, DST_COL}, 0, "Write reg[1] = 0xCAFEBABE" },
+    { {0x00000000, 0xDEADBEEF, true,  0xF, DST_ROW, DST_COL, SRC_ROW, SRC_COL}, 0, "Write reg[0] = 0xDEADBEEF" },
+    { {0x00000004, 0xCAFEBABE, true,  0xF, DST_ROW, DST_COL, SRC_ROW, SRC_COL}, 0, "Write reg[1] = 0xCAFEBABE" },
     // READ tests: read back values (slave returns stored data)
-    { {0x00000000, 0x00000000, false, 0xF, DST_ROW, DST_COL}, 0xDEADBEEF, "Read reg[0] expect 0xDEADBEEF" },
-    { {0x00000004, 0x00000000, false, 0xF, DST_ROW, DST_COL}, 0xCAFEBABE, "Read reg[1] expect 0xCAFEBABE" },
+    { {0x00000000, 0x00000000, false, 0xF, DST_ROW, DST_COL, SRC_ROW, SRC_COL}, 0xDEADBEEF, "Read reg[0] expect 0xDEADBEEF" },
+    { {0x00000004, 0x00000000, false, 0xF, DST_ROW, DST_COL, SRC_ROW, SRC_COL}, 0xCAFEBABE, "Read reg[1] expect 0xCAFEBABE" },
     // Read unmodified registers (slave resets to known values)
-    { {0x00000008, 0x00000000, false, 0xF, DST_ROW, DST_COL}, 0xCCCC2222, "Read reg[2] expect 0xCCCC2222" },
-    { {0x0000000C, 0x00000000, false, 0xF, DST_ROW, DST_COL}, 0xDDDD3333, "Read reg[3] expect 0xDDDD3333" },
+    { {0x00000008, 0x00000000, false, 0xF, DST_ROW, DST_COL, SRC_ROW, SRC_COL}, 0xCCCC2222, "Read reg[2] expect 0xCCCC2222" },
+    { {0x0000000C, 0x00000000, false, 0xF, DST_ROW, DST_COL, SRC_ROW, SRC_COL}, 0xDDDD3333, "Read reg[3] expect 0xDDDD3333" },
   };
   const int NUM_TESTS = sizeof(tests) / sizeof(tests[0]);
   int current_test = 0;

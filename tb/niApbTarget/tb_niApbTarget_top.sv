@@ -17,7 +17,7 @@ module tb_niApbTarget_top
 
 , localparam int unsigned COORD_WIDTH    = $clog2(GRID_WIDTH)
 , localparam int unsigned PAYLOAD_WIDTH  = APB_PAYLOAD_WIDTH
-, localparam int unsigned PACKET_WIDTH   = PAYLOAD_WIDTH + (COORD_WIDTH * 2)
+, localparam int unsigned PACKET_WIDTH   = PAYLOAD_WIDTH + (COORD_WIDTH * 4)
 )
 ( input  var logic i_clk
 , input  var logic i_arst_n
@@ -92,8 +92,8 @@ module tb_niApbTarget_top
 
   niApbTarget
   #(.GRID_WIDTH   (GRID_WIDTH)
-  , .RESP_DST_ROW (SRC_ROW)
-  , .RESP_DST_COL (SRC_COL)
+  , .MY_ROW       (DST_ROW)
+  , .MY_COL       (DST_COL)
   ) u_niApbTarget
   ( .i_clk     (i_clk)
   , .i_arst_n  (i_arst_n)
