@@ -14,7 +14,7 @@ module tb_niApbInitiator_top
 
 , localparam int unsigned COORD_WIDTH    = $clog2(GRID_WIDTH)
 , localparam int unsigned PAYLOAD_WIDTH  = APB_PAYLOAD_WIDTH
-, localparam int unsigned PACKET_WIDTH   = PAYLOAD_WIDTH + (COORD_WIDTH * 2)
+, localparam int unsigned PACKET_WIDTH   = PAYLOAD_WIDTH + (COORD_WIDTH * 4)
 , localparam int unsigned NUM_ROUTERS    = GRID_WIDTH * GRID_WIDTH
 )
 ( input  var logic i_clk
@@ -92,6 +92,8 @@ module tb_niApbInitiator_top
   #(.GRID_WIDTH          (GRID_WIDTH)
   , .NUM_ADDR_MAP_ENTRIES(NUM_ENTRIES)
   , .ADDR_MAP            (ADDR_MAP)
+  , .SRC_ROW             (SRC_ROW)
+  , .SRC_COL             (SRC_COL)
   ) u_niApbInitiator
   ( .i_clk     (i_clk)
   , .i_arst_n  (i_arst_n)

@@ -23,7 +23,7 @@
 #endif
 
 #define NUM_ROUTERS (GRID_WIDTH * GRID_WIDTH)
-#define PACKET_WIDTH 73
+#define PACKET_WIDTH 77
 #define BUS_WORDS ((NUM_ROUTERS * PACKET_WIDTH + 31) / 32)
 #define ROUTER_READY_MASK ((1U << NUM_ROUTERS) - 1U)
 #define NUM_SENDERS 4
@@ -69,9 +69,11 @@ void addPacketToInputBus(Vnoc *dut, int src_row, int src_col, int dst_row,
                          int dst_col, uint64_t payload) {
   const int BITS_PER_ELEMENT = 32;
 
+  // 77-bit packet: {payload(69), srcRow(2), srcCol(2), dstRow(2), dstCol(2)}
   uint64_t packet_low = (dst_col & 0x3ULL) | ((dst_row & 0x3ULL) << 2) |
-                        ((payload & 0xFFFFFFFFFFFFFFFULL) << 4);
-  uint16_t packet_high = (payload >> 60) & 0x1FF;
+                        ((src_col & 0x3ULL) << 4) | ((src_row & 0x3ULL) << 6) |
+                        ((payload & 0x00FFFFFFFFFFFFFFULL) << 8);
+  uint16_t packet_high = (payload >> 56) & 0x1FFF;
 
   int start_bit = routerIndex(src_row, src_col) * PACKET_WIDTH;
   int element_index = start_bit / BITS_PER_ELEMENT;
@@ -89,8 +91,8 @@ void addPacketToInputBus(Vnoc *dut, int src_row, int src_col, int dst_row,
     dut->i_niToRouter[element_index + 2] |= high_32 >> (32 - bit_offset);
   }
 
-  dut->i_niToRouter[element_index + 2] |= ((uint64_t)packet_high) << bit_offset;
-  if (bit_offset > 23) {
+  dut->i_niToRouter[element_index + 2] |= ((uint32_t)packet_high) << bit_offset;
+  if (bit_offset > 0) {
     dut->i_niToRouter[element_index + 3] |= packet_high >> (32 - bit_offset);
   }
 
@@ -122,14 +124,15 @@ uint64_t extractPayloadFromRouter(Vnoc *dut, int row, int col) {
   packet_low |= upper_32 << 32;
 
   uint16_t packet_high =
-      (dut->o_routerToNi[element_index + 2] >> bit_offset) & 0x1FF;
-  if (bit_offset > 23) {
+      (dut->o_routerToNi[element_index + 2] >> bit_offset) & 0x1FFF;
+  if (bit_offset > 0) {
     packet_high |= (dut->o_routerToNi[element_index + 3] &
-                    ((1ULL << (bit_offset - 23)) - 1))
+                    ((1ULL << bit_offset) - 1))
                    << (32 - bit_offset);
   }
 
-  return ((uint64_t)packet_high << 60) | (packet_low >> 4);
+  // Payload is at bits [76:8] — shift right by 8
+  return ((uint64_t)(packet_high & 0x1FFF) << 56) | (packet_low >> 8);
 }
 
 int main(int argc, char **argv, char **env) {

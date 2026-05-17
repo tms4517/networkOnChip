@@ -12,7 +12,7 @@
 #define RESET_CYCLES 6   // Keep async reset asserted for initial cycles.
 #define GRID_WIDTH 4     // Number of routers along one dimension of the grid.
 #define NUM_ROUTERS (GRID_WIDTH * GRID_WIDTH)
-#define PACKET_WIDTH 73
+#define PACKET_WIDTH 77
 #define BUS_WORDS ((NUM_ROUTERS * PACKET_WIDTH + 31) / 32)
 #define ROUTER_READY_MASK ((1U << NUM_ROUTERS) - 1U)
 #define INJECTION_PERIOD 10
@@ -64,28 +64,28 @@ void dut_reset(Vnoc *dut, bool do_reset) {
   }
 }
 
-// Each router input packet `i_niToRouter` is 73 bits wide.
+// Each router input packet `i_niToRouter` is 77 bits wide.
 // For a grid width of 4, there are 16 routers, so the total input bus width is
-// 73*16 = 1168 bits. This is represented as an array of 37 elements where each
-// element is 32 bits wide (37*32 = 1184 bits).
+// 77*16 = 1232 bits. This is represented as an array of 39 elements where each
+// element is 32 bits wide (39*32 = 1248 bits).
 // So each router input packet spans across 2 elements in the array (64 bits)
-// with 9 bits in the third element.
-// See, `./obj_dir/Vnoc.h`, VL_INW(i_niToRouter,1167,0,37).
+// with 13 bits in the third element.
+// See, `./obj_dir/Vnoc.h`.
 void writePacketToRandomRouter(Vnoc *dut, int row, int col, int destination_row,
                                int destination_col, uint64_t payload) {
 
   const int BITS_PER_PACKET = PACKET_WIDTH;
   const int BITS_PER_ELEMENT = 32;
 
-  // Construct 73-bit packet: payload(69)|destination_row(2)|destination_col(2)
-  // Note: Using only lower 64 bits of the 69-bit payload for simplicity.
-  // 0x3ULL is a bitwise mask that extracts only the lowest 2 bits, the ULL
-  // suffix ensures it is treated as an unsigned long long literal.
+  // Construct 77-bit packet: payload(69)|srcRow(2)|srcCol(2)|dstRow(2)|dstCol(2)
+  // Source coordinates = the injecting router (row, col).
   uint64_t packet_low = (destination_col & 0x3ULL) |
                         ((destination_row & 0x3ULL) << 2) |
-                        ((payload & 0xFFFFFFFFFFFFFFFULL) << 4);
-  // Upper 9 bits (4 from payload shift + 5 more)
-  uint16_t packet_high = (payload >> 60) & 0x1FF;
+                        ((col & 0x3ULL) << 4) |
+                        ((row & 0x3ULL) << 6) |
+                        ((payload & 0x00FFFFFFFFFFFFFFULL) << 8);
+  // Upper 13 bits
+  uint16_t packet_high = (payload >> 56) & 0x1FFF;
 
   int router_id = routerIndex(row, col);
   int start_bit = router_id * BITS_PER_PACKET;
@@ -115,11 +115,10 @@ void writePacketToRandomRouter(Vnoc *dut, int row, int col, int destination_row,
     dut->i_niToRouter[element_index + 2] |= high_32 >> (32 - bit_offset);
   }
 
-  // Write remaining 9 bits from packet_high
-  dut->i_niToRouter[element_index + 2] |= ((uint64_t)packet_high) << bit_offset;
-  // Handle overflow to next element if needed (only if bit_offset > 23, since
-  // packet_high is 9 bits)
-  if (bit_offset > 23) {
+  // Write remaining 13 bits from packet_high
+  dut->i_niToRouter[element_index + 2] |= ((uint32_t)packet_high) << bit_offset;
+  // Handle overflow to next element if needed
+  if (bit_offset > 0) {
     dut->i_niToRouter[element_index + 3] |= packet_high >> (32 - bit_offset);
   }
 
@@ -148,7 +147,6 @@ uint64_t extractPayloadFromRouter(Vnoc *dut, int row, int col) {
   int bit_offset = start_bit % BITS_PER_ELEMENT;
 
   // Read and reconstruct packet_low (64 bits)
-  // Need to account for bits spanning across element boundaries
   uint64_t packet_low = 0;
 
   // Get bits from element_index (shifted right to align)
@@ -171,17 +169,17 @@ uint64_t extractPayloadFromRouter(Vnoc *dut, int row, int col) {
   }
   packet_low |= upper_32 << 32;
 
-  // Read remaining 9 bits from packet_high (starting at bit 64 of the packet)
+  // Read remaining 13 bits from packet_high (starting at bit 64 of the packet)
   uint16_t packet_high =
-      (dut->o_routerToNi[element_index + 2] >> bit_offset) & 0x1FF;
-  // If bit_offset > 23, packet_high spans into element_index + 3
-  if (bit_offset > 23) {
+      (dut->o_routerToNi[element_index + 2] >> bit_offset) & 0x1FFF;
+  if (bit_offset > 0) {
     packet_high |= (dut->o_routerToNi[element_index + 3] &
-                    ((1ULL << (bit_offset - 23)) - 1))
+                    ((1ULL << bit_offset) - 1))
                    << (32 - bit_offset);
   }
 
-  return ((uint64_t)packet_high << 60) | (packet_low >> 4);
+  // Payload is at bits [76:8] — shift right by 8
+  return ((uint64_t)(packet_high & 0x1FFF) << 56) | (packet_low >> 8);
 }
 
 bool readPacketFromDestinationRouter(Vnoc *dut, int row, int col,

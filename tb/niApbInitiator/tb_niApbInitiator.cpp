@@ -25,7 +25,7 @@
 #define NUM_ROUTERS (GRID_WIDTH * GRID_WIDTH)
 #define COORD_WIDTH 2 // clog2(4)
 #define PAYLOAD_WIDTH 69
-#define PACKET_WIDTH (PAYLOAD_WIDTH + COORD_WIDTH * 2) // 73
+#define PACKET_WIDTH (PAYLOAD_WIDTH + COORD_WIDTH * 4) // 77
 
 vluint64_t sim_time = 0;
 vluint64_t posedge_cnt = 0;
@@ -65,13 +65,15 @@ static uint32_t extractBits(Vtb_niApbInitiator_top *dut, int start_bit, int widt
 }
 
 // Decode APB payload fields directly from packet bits for a given router.
-// Packet layout (73 bits):
+// Packet layout (77 bits):
 //   [1:0]   = dstCol
 //   [3:2]   = dstRow
-//   [7:4]   = PSTRB
-//   [8]     = PWRITE
-//   [40:9]  = PWDATA
-//   [72:41] = PADDR
+//   [5:4]   = srcCol
+//   [7:6]   = srcRow
+//   [11:8]  = PSTRB
+//   [12]    = PWRITE
+//   [44:13] = PWDATA
+//   [76:45] = PADDR
 struct DecodedPayload {
   uint32_t paddr;
   uint32_t pwdata;
@@ -82,10 +84,10 @@ struct DecodedPayload {
 static DecodedPayload decodePacketAtRouter(Vtb_niApbInitiator_top *dut, int row, int col) {
   int pkt_start = routerIndex(row, col) * PACKET_WIDTH;
   DecodedPayload d;
-  d.pstrb  = extractBits(dut, pkt_start + 4,  4);
-  d.pwrite = extractBits(dut, pkt_start + 8,  1);
-  d.pwdata = extractBits(dut, pkt_start + 9,  32);
-  d.paddr  = extractBits(dut, pkt_start + 41, 32);
+  d.pstrb  = extractBits(dut, pkt_start + 8,  4);
+  d.pwrite = extractBits(dut, pkt_start + 12, 1);
+  d.pwdata = extractBits(dut, pkt_start + 13, 32);
+  d.paddr  = extractBits(dut, pkt_start + 45, 32);
   return d;
 }
 
