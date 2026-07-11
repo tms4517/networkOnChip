@@ -282,7 +282,9 @@ module router
   always_comb
     westFifoReadEn  = fifoReadEn[WEST];
 
-  arbiter u_arbiter
+  arbiter
+  #(.PACKET_WIDTH (PACKET_WIDTH)
+  ) u_arbiter
   ( .i_clk
   , .i_arst_n
   , .i_fifoHasPacket (fifoHasPacket)

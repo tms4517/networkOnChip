@@ -99,11 +99,11 @@ module niApbTarget
   logic [COORD_WIDTH-1:0] reqSrcCol_d;
 
   always_comb
-    reqSrcRow_d = i_routerToNi[(4*COORD_WIDTH + 2*NI_ID_WIDTH)-1
+    reqSrcRow_d = i_routerToNi[(4*COORD_WIDTH + NI_ID_WIDTH)-1
                                 -: COORD_WIDTH];
 
   always_comb
-    reqSrcCol_d = i_routerToNi[(3*COORD_WIDTH + 2*NI_ID_WIDTH)-1
+    reqSrcCol_d = i_routerToNi[(3*COORD_WIDTH + NI_ID_WIDTH)-1
                                 -: COORD_WIDTH];
   // }}} Extract source coordinates
 
