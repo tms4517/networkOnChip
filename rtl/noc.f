@@ -1,6 +1,7 @@
 pa_noc.sv
 niApbInitiator.sv
 niApbTarget.sv
+niRouterPort.sv
 noc.sv
 mesh.sv
 router.sv
