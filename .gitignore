@@ -14,4 +14,4 @@ tb/*.gtkw
 tb/*.verilate
 
 # Ignore generated logs
-logs
+**/*.log*
