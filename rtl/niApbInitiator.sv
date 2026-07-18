@@ -69,57 +69,82 @@ module niApbInitiator
   // Entries are checked from index 0 upward; the first matching entry wins.
   // If no entry matches, the packet is not forwarded (o_niToRouterValid is low)
   // and the APB transaction completes with a SLVERR response.
-  // TODO: Is there a better way of creating this priority encoder?
   logic                    addrHit;
   logic [COORD_WIDTH-1:0]  dstRow;
   logic [COORD_WIDTH-1:0]  dstCol;
 
-  /* svlint off sequential_block_in_always_comb */
-  /* svlint off loop_statement_in_always_comb */
-  /* svlint off explicit_if_else */
-  if (NI_ID_WIDTH > 0)
-  begin: gen_addr_decode_with_id
+  if (NI_ID_WIDTH > 0) begin: gen_multiple_ni_per_router
+
     logic [NI_ID_WIDTH-1:0] dstNiId;
 
-    always_comb begin
-      addrHit  = 1'b0;
-      dstRow   = '0;
-      dstCol   = '0;
-      dstNiId  = '0;
+    for (genvar i = 0; i < NUM_ADDR_MAP_ENTRIES; i++) begin: gen_addr_decode_with_id
 
-      for (int i = 0; i < NUM_ADDR_MAP_ENTRIES; i++) begin
+      always_comb
         if (!addrHit
             && (i_paddr >= ADDR_MAP[i].baseAddr)
-            && (i_paddr <= ADDR_MAP[i].endAddr)) begin
+            && (i_paddr <= ADDR_MAP[i].endAddr))
           addrHit = 1'b1;
+        else
+          addrHit  = '0;
+
+      always_comb
+        if (!addrHit
+            && (i_paddr >= ADDR_MAP[i].baseAddr)
+            && (i_paddr <= ADDR_MAP[i].endAddr))
           dstRow  = COORD_WIDTH'(ADDR_MAP[i].dstRow);
+        else
+          dstRow   = '0;
+
+      always_comb
+        if (!addrHit
+            && (i_paddr >= ADDR_MAP[i].baseAddr)
+            && (i_paddr <= ADDR_MAP[i].endAddr))
           dstCol  = COORD_WIDTH'(ADDR_MAP[i].dstCol);
+        else
+          dstCol   = '0;
+
+      always_comb
+        if (!addrHit
+            && (i_paddr >= ADDR_MAP[i].baseAddr)
+            && (i_paddr <= ADDR_MAP[i].endAddr))
           dstNiId = NI_ID_WIDTH'(ADDR_MAP[i].dstNiId);
-        end
-      end
-    end
-  end: gen_addr_decode_with_id
-  else
-  begin: gen_addr_decode_no_id
-    always_comb begin
-      addrHit = 1'b0;
-      dstRow  = '0;
-      dstCol  = '0;
+        else
+          dstNiId  = '0;
 
-      for (int i = 0; i < NUM_ADDR_MAP_ENTRIES; i++) begin
+    end: gen_addr_decode_with_id
+
+  end: gen_multiple_ni_per_router
+  else begin: gen_single_ni_per_router
+
+    for (genvar i = 0; i < NUM_ADDR_MAP_ENTRIES; i++) begin: gen_addr_decode_no_id
+
+      always_comb
         if (!addrHit
             && (i_paddr >= ADDR_MAP[i].baseAddr)
-            && (i_paddr <= ADDR_MAP[i].endAddr)) begin
+            && (i_paddr <= ADDR_MAP[i].endAddr))
           addrHit = 1'b1;
+        else
+          addrHit  = '0;
+
+      always_comb
+        if (!addrHit
+            && (i_paddr >= ADDR_MAP[i].baseAddr)
+            && (i_paddr <= ADDR_MAP[i].endAddr))
           dstRow  = COORD_WIDTH'(ADDR_MAP[i].dstRow);
+        else
+          dstRow   = '0;
+
+      always_comb
+        if (!addrHit
+            && (i_paddr >= ADDR_MAP[i].baseAddr)
+            && (i_paddr <= ADDR_MAP[i].endAddr))
           dstCol  = COORD_WIDTH'(ADDR_MAP[i].dstCol);
-        end
-      end
-    end
-  end: gen_addr_decode_no_id
-  /* svlint on explicit_if_else */
-  /* svlint on loop_statement_in_always_comb */
-  /* svlint on sequential_block_in_always_comb */
+        else
+          dstCol   = '0;
+
+    end: gen_addr_decode_no_id
+
+  end: gen_single_ni_per_router
   // }}} Address decode
 
   // {{{ Pack APB Payload
