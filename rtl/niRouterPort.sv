@@ -115,15 +115,16 @@ module niRouterPort
           o_niToRouter = i_niToRouter[k];
       end
     end
-
-    always_comb begin
-      for (int unsigned k = 0; k < NUM_NI; k++) begin
-        o_niToRouterReady[k] = grant[k] & i_niToRouterReady;
-      end
-    end
     /* svlint on explicit_if_else */
     /* svlint on loop_statement_in_always_comb */
     /* svlint on sequential_block_in_always_comb */
+
+    for (genvar i = 0; i < NUM_NI; i++) begin: gen_ni_ready
+
+      always_comb
+        o_niToRouterReady[i] = grant[i] & i_niToRouterReady;
+
+    end: gen_ni_ready
 
     always_comb
       o_niToRouterValid = grantValid;
@@ -143,26 +144,28 @@ module niRouterPort
     always_comb
       sel = i_routerToNi[DST_NIID_LSB +: NI_ID_WIDTH];
 
+    for (genvar i = 0; i < NUM_NI; i++) begin: gen_router_to_ni
+
+      always_comb
+        o_routerToNi[i] = i_routerToNi;
+
+    end
+
+    for (genvar i = 0; i < NUM_NI; i++) begin: gen_router_to_ni_valid
+
+      always_comb
+        o_routerToNiValid[i] = i_routerToNiValid & (sel == NI_ID_WIDTH'(i));
+
+    end: gen_router_to_ni_valid
+
     /* svlint off sequential_block_in_always_comb */
     /* svlint off loop_statement_in_always_comb */
     /* svlint off explicit_if_else */
     always_comb begin
-      for (int unsigned k = 0; k < NUM_NI; k++) begin
-        o_routerToNi[k] = i_routerToNi;
-      end
-    end
-
-    always_comb begin
-      for (int unsigned k = 0; k < NUM_NI; k++) begin
-        o_routerToNiValid[k] = i_routerToNiValid & (sel == NI_ID_WIDTH'(k));
-      end
-    end
-
-    always_comb begin
       o_routerToNiReady = 1'b0;
-      for (int unsigned k = 0; k < NUM_NI; k++) begin
-        if (sel == NI_ID_WIDTH'(k))
-          o_routerToNiReady = i_routerToNiReady[k];
+      for (int unsigned i = 0; i < NUM_NI; i++) begin
+        if (sel == NI_ID_WIDTH'(i))
+          o_routerToNiReady = i_routerToNiReady[i];
       end
     end
     /* svlint on explicit_if_else */
