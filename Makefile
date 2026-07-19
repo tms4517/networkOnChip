@@ -19,6 +19,17 @@ lint:
 	svlint -f $(FILE_LIST) \
 	-c $(NOC_ROOT)/.svlint.toml | tee $(LOG_DIR)/lint/svlint.log
 
+.PHONY: lintAxi
+lintAxi:
+	mkdir -p $(LOG_DIR)/lintAxi && \
+	cd $(LOG_DIR)/lintAxi && \
+	verilator --lint-only -sv \
+	-F $(RTL_PATH)/noc_axi.f \
+	--top-module $(TOP_MODULE) | tee verilator_lint.log && \
+	cd $(RTL_PATH) && \
+	svlint -f $(RTL_PATH)/noc_axi.f \
+	-c $(NOC_ROOT)/.svlint.toml | tee $(LOG_DIR)/lintAxi/svlint.log
+
 .PHONY: nocStructureTb
 nocStructureTb:
 	mkdir -p $(LOG_DIR)/nocStructureTb && \
@@ -34,6 +45,16 @@ niApbTargetTb:
 	mkdir -p $(LOG_DIR)/niApbTargetTb && \
 	$(MAKE) -C $(TB_PATH)/niApbTarget | tee $(LOG_DIR)/niApbTargetTb/sim.log
 
+.PHONY: niAxiLiteInitiatorTb
+niAxiLiteInitiatorTb:
+	mkdir -p $(LOG_DIR)/niAxiLiteInitiatorTb && \
+	$(MAKE) -C $(TB_PATH)/niAxiLiteInitiator | tee $(LOG_DIR)/niAxiLiteInitiatorTb/sim.log
+
+.PHONY: niAxiLiteTargetTb
+niAxiLiteTargetTb:
+	mkdir -p $(LOG_DIR)/niAxiLiteTargetTb && \
+	$(MAKE) -C $(TB_PATH)/niAxiLiteTarget | tee $(LOG_DIR)/niAxiLiteTargetTb/sim.log
+
 .PHONY: niRouterPortTb
 niRouterPortTb:
 	mkdir -p $(LOG_DIR)/niRouterPortTb && \
@@ -48,6 +69,11 @@ nocApbIntegration1Tb:
 nocApbIntegration2Tb:
 	mkdir -p $(LOG_DIR)/nocApbIntegration2Tb && \
 	$(MAKE) -C $(TB_PATH)/nocApbIntegration2 | tee $(LOG_DIR)/nocApbIntegration2Tb/sim.log
+
+.PHONY: nocAxiIntegration1Tb
+nocAxiIntegration1Tb:
+	mkdir -p $(LOG_DIR)/nocAxiIntegration1Tb && \
+	$(MAKE) -C $(TB_PATH)/nocAxiIntegration1 | tee $(LOG_DIR)/nocAxiIntegration1Tb/sim.log
 
 .PHONY: synthesis
 synthesis:
@@ -66,3 +92,6 @@ clean:
 	$(MAKE) -C $(TB_PATH)/niRouterPort clean
 	$(MAKE) -C $(TB_PATH)/nocApbIntegration1 clean
 	$(MAKE) -C $(TB_PATH)/nocApbIntegration2 clean
+	$(MAKE) -C $(TB_PATH)/niAxiLiteInitiator clean
+	$(MAKE) -C $(TB_PATH)/niAxiLiteTarget clean
+	$(MAKE) -C $(TB_PATH)/nocAxiIntegration1 clean
