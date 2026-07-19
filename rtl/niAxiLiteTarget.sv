@@ -2,16 +2,15 @@
 
 // This module receives NoC request packets from a remote initiator NI, unpacks
 // the AXI4-Lite fields, and drives a full AXI4-Lite transaction as the MANAGER
-// towards a local AXI4-Lite subordinate.  It is the AXI4-Lite counterpart of
-// niApbTarget.
-//
+// towards a local AXI4-Lite subordinate.
+
 // WRITE: the payload is unpacked into AWADDR/WDATA/WSTRB, the AW and W channels
 // are driven, the B response is captured, and a response packet carrying BRESP
 // is sent back through the NoC to the initiator.
-//
+
 // READ: the payload is unpacked into ARADDR, the AR channel is driven, the R
 // response (RDATA/RRESP) is captured, and a response packet is sent back.
-//
+
 // The response destination is taken from the source coordinates embedded in the
 // incoming request packet (dynamic routing).
 
@@ -81,6 +80,14 @@ module niAxiLiteTarget
 
   ty_state state_q, state_d;
 
+  // Request packet accepted this cycle (ready/valid handshake completes).
+  // o_routerToNiReady is only asserted in ST_IDLE, so reqAccept already implies
+  // the FSM is idle.
+  logic reqAccept;
+
+  always_comb
+    reqAccept = i_routerToNiValid && o_routerToNiReady;
+
   // {{{ Unpack AXI-Lite request payload
   // Payload encoding (LSB to MSB): {ADDR, DATA, WSTRB, WRITE, RESP}
   logic [PAYLOAD_WIDTH-1:0] reqPayload;
@@ -133,7 +140,7 @@ module niAxiLiteTarget
     always_ff @(posedge i_clk or negedge i_arst_n)
       if (!i_arst_n)
         reqSrcNiId_q <= '0;
-      else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
+      else if (reqAccept)
         reqSrcNiId_q <= reqSrcNiId_d;
       else
         reqSrcNiId_q <= reqSrcNiId_q;
@@ -150,40 +157,40 @@ module niAxiLiteTarget
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
-      addr_q      <= '0;
-    else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
-      addr_q      <= addr_d;
+      addr_q <= '0;
+    else if (reqAccept)
+      addr_q <= addr_d;
     else
-      addr_q      <= addr_q;
+      addr_q <= addr_q;
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
-      wdata_q     <= '0;
-    else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
-      wdata_q     <= wdata_d;
+      wdata_q <= '0;
+    else if (reqAccept)
+      wdata_q <= wdata_d;
     else
-      wdata_q     <= wdata_q;
+      wdata_q <= wdata_q;
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
-      wstrb_q     <= '0;
-    else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
-      wstrb_q     <= wstrb_d;
+      wstrb_q <= '0;
+    else if (reqAccept)
+      wstrb_q <= wstrb_d;
     else
-      wstrb_q     <= wstrb_q;
+      wstrb_q <= wstrb_q;
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
-      write_q     <= 1'b0;
-    else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
-      write_q     <= write_d;
+      write_q <= 1'b0;
+    else if (reqAccept)
+      write_q <= write_d;
     else
-      write_q     <= write_q;
+      write_q <= write_q;
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
       reqSrcRow_q <= '0;
-    else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
+    else if (reqAccept)
       reqSrcRow_q <= reqSrcRow_d;
     else
       reqSrcRow_q <= reqSrcRow_q;
@@ -191,7 +198,7 @@ module niAxiLiteTarget
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
       reqSrcCol_q <= '0;
-    else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
+    else if (reqAccept)
       reqSrcCol_q <= reqSrcCol_d;
     else
       reqSrcCol_q <= reqSrcCol_q;
@@ -207,7 +214,7 @@ module niAxiLiteTarget
   always_comb
     case (state_q)
       ST_IDLE:
-        if (i_routerToNiValid && o_routerToNiReady)
+        if (reqAccept)
           state_d = write_d ? ST_AW : ST_AR;
         else
           state_d = ST_IDLE;
