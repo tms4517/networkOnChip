@@ -1,17 +1,16 @@
 // Network Interface — AXI4-Lite Initiator (manager-facing)
 
 // This module presents an AXI4-Lite SUBORDINATE interface to a local AXI4-Lite
-// manager, and forwards its transactions into the NoC.  It is the AXI4-Lite
-// counterpart of niApbInitiator.
-//
+// manager, and forwards its transactions into the NoC.
+
 // On a WRITE (AW + W), the address is decoded against the address map to select
 // the destination router, a request packet is assembled and forwarded into the
 // mesh, and once the write response packet returns, the B channel is driven.
-//
+
 // On a READ (AR), a request packet (WRITE=0) is forwarded into the mesh.  When
 // the response packet returns through the router-to-NI port, the R channel is
 // driven with RDATA/RRESP.
-//
+
 // If the address does not match any map entry, the transaction still completes
 // but returns a DECERR response (no packet is forwarded).
 
@@ -86,8 +85,7 @@ module niAxiLiteInitiator
   // }}} FSM state definition
 
   // {{{ New-transaction arbitration (read priority)
-  logic readReq;
-  logic writeReq;
+  logic readReq, writeReq;
 
   always_comb
     readReq = i_arvalid;
@@ -309,6 +307,29 @@ module niAxiLiteInitiator
   // }}} Pack AXI-Lite request payload
 
   // {{{ FSM
+  // The FSM sequences each AXI transaction through send -> wait -> respond so
+  // that an AXI response is never asserted before the transaction has actually
+  // completed at the remote end.
+
+  // Write completion guarantee: ST_WR_B (which drives o_bvalid) can only be
+  // reached from ST_WR_WAIT, and ST_WR_WAIT blocks until i_routerToNiValid --
+  // i.e. until the response packet returns.  That response packet is produced
+  // by the remote subordinate's target NI only after that subordinate has
+  // finished the write and issued its own B response, which is then packetized
+  // and routed back across the mesh.  So by the time the FSM sits in ST_WR_B
+  // the completion has already been observed; o_bvalid is never speculative.
+  // The same reasoning applies to reads: ST_RD_R is only entered once the read
+  // response packet has been received in ST_RD_WAIT.
+
+  // DECERR exception: on an address-map miss (addrHit == 0) ST_IDLE jumps
+  // directly to ST_WR_B / ST_RD_R with no mesh round-trip.  This is a
+  // deliberate local completion (there is no remote subordinate to reach), so
+  // asserting the AXI response immediately with a DECERR code is correct.
+
+  // Contract / caveat: this relies on the NoC guaranteeing that every request
+  // packet eventually produces exactly one response packet.  There is no
+  // timeout -- a dropped or never-answered response would leave the FSM parked
+  // in ST_WR_WAIT / ST_RD_WAIT forever.
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
       state_q <= ST_IDLE;
@@ -324,17 +345,17 @@ module niAxiLiteInitiator
           state_d = addrHit ? ST_WR_SEND : ST_WR_B;
         else
           state_d = ST_IDLE;
-      ST_WR_SEND:
+      ST_WR_SEND:  // hold until the mesh accepts the request packet
         state_d = i_niToRouterReady ? ST_WR_WAIT : ST_WR_SEND;
-      ST_WR_WAIT:
+      ST_WR_WAIT:  // block until the write response packet returns
         state_d = i_routerToNiValid ? ST_WR_B : ST_WR_WAIT;
-      ST_WR_B:
+      ST_WR_B:     // completion already observed: drive B, hold until accepted
         state_d = i_bready ? ST_IDLE : ST_WR_B;
-      ST_RD_SEND:
+      ST_RD_SEND:  // hold until the mesh accepts the request packet
         state_d = i_niToRouterReady ? ST_RD_WAIT : ST_RD_SEND;
-      ST_RD_WAIT:
+      ST_RD_WAIT:  // block until the read response packet returns
         state_d = i_routerToNiValid ? ST_RD_R : ST_RD_WAIT;
-      ST_RD_R:
+      ST_RD_R:     // data already captured: drive R, hold until accepted
         state_d = i_rready ? ST_IDLE : ST_RD_R;
       default:
         state_d = ST_IDLE;
@@ -357,7 +378,7 @@ module niAxiLiteInitiator
 
   always_comb
     respAccept = (state_q == ST_WR_WAIT || state_q == ST_RD_WAIT)
-      && i_routerToNiValid;
+                  && i_routerToNiValid;
 
   // New transaction started with no matching address map entry (DECERR).
   logic noHitStart;
@@ -397,6 +418,12 @@ module niAxiLiteInitiator
   // }}} NoC handshake
 
   // {{{ AXI response outputs
+  // These are pure publish steps.  Reaching ST_WR_B / ST_RD_R already implies
+  // the round-trip response packet was received (or a DECERR was locally
+  // resolved), so o_bvalid / o_rvalid are only asserted once the transaction is
+  // genuinely complete.  resp_q / rdata_q hold the value captured from that
+  // response, and the FSM keeps o_bvalid / o_rvalid stable until the manager
+  // asserts i_bready / i_rready, per the AXI handshake rules.
   always_comb
     o_bvalid = (state_q == ST_WR_B);
 
