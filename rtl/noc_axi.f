@@ -1,5 +1,4 @@
 pa_noc.sv
-pa_axi.sv
 niAxiLiteInitiator.sv
 niAxiLiteTarget.sv
 niRouterPort.sv

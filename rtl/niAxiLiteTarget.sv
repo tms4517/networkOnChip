@@ -27,7 +27,7 @@ module niAxiLiteTarget
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
 , localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1) ?
                                           $clog2(MAX_NI_PER_ROUTER) : 0
-, localparam int unsigned PAYLOAD_WIDTH = pa_axi::AXI_LITE_PAYLOAD_WIDTH
+, localparam int unsigned PAYLOAD_WIDTH = pa_noc::AXI_LITE_PAYLOAD_WIDTH
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
                                           + (COORD_WIDTH * 4)
 )
@@ -94,16 +94,16 @@ module niAxiLiteTarget
   logic        write_d;
 
   always_comb
-    addr_d  = reqPayload[pa_axi::AXI_ADDR_LSB +: 32];
+    addr_d  = reqPayload[pa_noc::AXI_ADDR_LSB +: 32];
 
   always_comb
-    wdata_d = reqPayload[pa_axi::AXI_DATA_LSB +: 32];
+    wdata_d = reqPayload[pa_noc::AXI_DATA_LSB +: 32];
 
   always_comb
-    wstrb_d = reqPayload[pa_axi::AXI_WSTRB_LSB +: 4];
+    wstrb_d = reqPayload[pa_noc::AXI_WSTRB_LSB +: 4];
 
   always_comb
-    write_d = reqPayload[pa_axi::AXI_WRITE_LSB];
+    write_d = reqPayload[pa_noc::AXI_WRITE_LSB];
   // }}} Unpack AXI-Lite request payload
 
   // {{{ Extract source coordinates from incoming packet
@@ -244,7 +244,7 @@ module niAxiLiteTarget
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
-      resp_q  <= pa_axi::AXI_RESP_OKAY;
+      resp_q  <= pa_noc::AXI_RESP_OKAY;
     else if (state_q == ST_B && i_bvalid)
       resp_q  <= i_bresp;
     else if (state_q == ST_R && i_rvalid)
