@@ -4,7 +4,7 @@
 
 TOP_MODULE = tb_niAxiLiteInitiator_top
 RTL_PATH = ../../rtl
-NOC_FILE_LIST = $(RTL_PATH)/noc_axi.f
+NOC_FILE_LIST = $(RTL_PATH)/noc.f
 TB_SV = tb_niAxiLiteInitiator_top.sv
 TB_CPP = tb_niAxiLiteInitiator.cpp
 WAVEFORM = waveform_niAxiLiteInitiator.vcd

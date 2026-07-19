@@ -19,17 +19,6 @@ lint:
 	svlint -f $(FILE_LIST) \
 	-c $(NOC_ROOT)/.svlint.toml | tee $(LOG_DIR)/lint/svlint.log
 
-.PHONY: lintAxi
-lintAxi:
-	mkdir -p $(LOG_DIR)/lintAxi && \
-	cd $(LOG_DIR)/lintAxi && \
-	verilator --lint-only -sv \
-	-F $(RTL_PATH)/noc_axi.f \
-	--top-module $(TOP_MODULE) | tee verilator_lint.log && \
-	cd $(RTL_PATH) && \
-	svlint -f $(RTL_PATH)/noc_axi.f \
-	-c $(NOC_ROOT)/.svlint.toml | tee $(LOG_DIR)/lintAxi/svlint.log
-
 .PHONY: nocStructureTb
 nocStructureTb:
 	mkdir -p $(LOG_DIR)/nocStructureTb && \

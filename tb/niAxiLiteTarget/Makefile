@@ -4,7 +4,7 @@
 
 TOP_MODULE = tb_niAxiLiteTarget_top
 RTL_PATH = ../../rtl
-NOC_FILE_LIST = $(RTL_PATH)/noc_axi.f
+NOC_FILE_LIST = $(RTL_PATH)/noc.f
 TB_SV = tb_niAxiLiteTarget_top.sv
 TB_CPP = tb_niAxiLiteTarget.cpp
 WAVEFORM = waveform_niAxiLiteTarget.vcd
