@@ -205,6 +205,32 @@ module niAxiLiteTarget
   // }}} Flop incoming request fields
 
   // {{{ FSM
+  // The FSM sequences one incoming NoC request through the full AXI4-Lite
+  // transaction and back into a response packet, handling exactly one request
+  // at a time.
+
+  // Single-outstanding guarantee: the FSM leaves ST_IDLE only on reqAccept (a
+  // completed router-to-NI handshake), and o_routerToNiReady is asserted only
+  // in ST_IDLE.  So a new request packet cannot be consumed until the current
+  // one has driven its AXI transaction and pushed its response packet back into
+  // the mesh; the latched request fields therefore stay stable throughout.
+
+  // Write path: ST_AW -> ST_W -> ST_B drives the AXI write address, write data
+  // and write-response channels in turn, capturing BRESP.  Read path:
+  // ST_AR -> ST_R drives the read address channel and captures RDATA/RRESP.
+  // AW/W (and AR) are driven as separate sequential states, so this target
+  // never presents AW and W simultaneously -- it advances one channel at a time
+  // on that channel's own ready/valid handshake.
+
+  // Both paths converge on ST_RESP, which drives o_niToRouterValid and blocks
+  // until i_niToRouterReady accepts the response packet before returning to
+  // ST_IDLE.  The response is only emitted after the local subordinate has
+  // actually completed the access (B or R captured), so it is never premature.
+
+  // Contract / caveat: like the initiator, there is no timeout.  A local
+  // subordinate that never asserts i_awready/i_wready/i_bvalid (write) or
+  // i_arready/i_rvalid (read) would park the FSM in the corresponding state
+  // forever and hold the shared router port busy.
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n)
       state_q <= ST_IDLE;
@@ -213,22 +239,22 @@ module niAxiLiteTarget
 
   always_comb
     case (state_q)
-      ST_IDLE:
+      ST_IDLE:     // wait for a request; branch on write_d to the write/read arm
         if (reqAccept)
           state_d = write_d ? ST_AW : ST_AR;
         else
           state_d = ST_IDLE;
-      ST_AW:
+      ST_AW:       // drive write address, hold until i_awready
         state_d = i_awready ? ST_W : ST_AW;
-      ST_W:
+      ST_W:        // drive write data, hold until i_wready
         state_d = i_wready ? ST_B : ST_W;
-      ST_B:
+      ST_B:        // await write response, hold until i_bvalid (capture BRESP)
         state_d = i_bvalid ? ST_RESP : ST_B;
-      ST_AR:
+      ST_AR:       // drive read address, hold until i_arready
         state_d = i_arready ? ST_R : ST_AR;
-      ST_R:
+      ST_R:        // await read data, hold until i_rvalid (capture RDATA/RRESP)
         state_d = i_rvalid ? ST_RESP : ST_R;
-      ST_RESP:
+      ST_RESP:     // send response packet, hold until the mesh accepts it
         state_d = i_niToRouterReady ? ST_IDLE : ST_RESP;
       default:
         state_d = ST_IDLE;
