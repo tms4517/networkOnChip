@@ -28,11 +28,7 @@ module niAhbTarget
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
 , localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1) ?
                                           $clog2(MAX_NI_PER_ROUTER) : 0
-  // AHB-Lite unified request/response payload (see niAhbInitiator for the full
-  // field description).  Encoding (LSB to MSB):
-  // {HADDR[31:0], HDATA[31:0], HTRANS[1:0], HSIZE[2:0], HWRITE, HRESP}
-  // Width = 32 + 32 + 2 + 3 + 1 + 1 = 71 bits.
-, localparam int unsigned PAYLOAD_WIDTH = 71
+, localparam int unsigned PAYLOAD_WIDTH = pa_noc::AHB_PAYLOAD_WIDTH
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
                                           + (COORD_WIDTH * 4)
 )
@@ -60,19 +56,6 @@ module niAhbTarget
 , output var logic                    o_niToRouterValid
 , input  var logic                    i_niToRouterReady
 );
-
-  // {{{ AHB payload field offsets (LSB position within the payload)
-  // Full field map (LSB to MSB):
-  //   HRESP[0], HWRITE[1], HSIZE[4:2], HTRANS[6:5], HDATA[38:7], HADDR[70:39].
-  localparam int unsigned AHB_HWRITE_LSB = 1;   // [1]
-  localparam int unsigned AHB_HSIZE_LSB  = 2;   // [4:2]
-  localparam int unsigned AHB_HDATA_LSB  = 7;   // [38:7]
-  localparam int unsigned AHB_HADDR_LSB  = 39;  // [70:39]
-
-  // HTRANS encodings.
-  localparam bit [1:0] HTRANS_IDLE   = 2'b00;
-  localparam bit [1:0] HTRANS_NONSEQ = 2'b10;
-  // }}} AHB payload field offsets
 
   typedef enum logic [1:0]
   { ST_IDLE  // Waiting for an incoming request packet
@@ -103,16 +86,16 @@ module niAhbTarget
   logic [2:0]  hsize_d;
 
   always_comb
-    haddr_d  = reqPayload[AHB_HADDR_LSB +: 32];
+    haddr_d  = reqPayload[pa_noc::AHB_HADDR_LSB +: 32];
 
   always_comb
-    hwdata_d = reqPayload[AHB_HDATA_LSB +: 32];
+    hwdata_d = reqPayload[pa_noc::AHB_HDATA_LSB +: 32];
 
   always_comb
-    hwrite_d = reqPayload[AHB_HWRITE_LSB];
+    hwrite_d = reqPayload[pa_noc::AHB_HWRITE_LSB];
 
   always_comb
-    hsize_d  = reqPayload[AHB_HSIZE_LSB +: 3];
+    hsize_d  = reqPayload[pa_noc::AHB_HSIZE_LSB +: 3];
   // }}} Unpack AHB request payload
 
   // {{{ Extract source coordinates from incoming packet
@@ -271,9 +254,9 @@ module niAhbTarget
 
   always_comb
     if (state_q == ST_ADDR)
-      o_htrans = HTRANS_NONSEQ;
+      o_htrans = pa_noc::AHB_TRANS_NONSEQ;
     else
-      o_htrans = HTRANS_IDLE;
+      o_htrans = pa_noc::AHB_TRANS_IDLE;
 
   always_comb
     o_haddr = haddr_q;

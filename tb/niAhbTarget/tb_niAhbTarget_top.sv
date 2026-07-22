@@ -17,7 +17,7 @@ module tb_niAhbTarget_top
 
 , localparam int unsigned COORD_WIDTH    = $clog2(GRID_WIDTH)
 , localparam int unsigned NI_ID_WIDTH    = (MAX_NI_PER_ROUTER > 1) ? $clog2(MAX_NI_PER_ROUTER) : 0
-, localparam int unsigned PAYLOAD_WIDTH  = 71
+, localparam int unsigned PAYLOAD_WIDTH  = pa_noc::AHB_PAYLOAD_WIDTH
 , localparam int unsigned PACKET_WIDTH   = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH) + (COORD_WIDTH * 4)
 )
 ( input  var logic i_clk

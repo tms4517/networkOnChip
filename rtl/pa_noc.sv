@@ -55,6 +55,43 @@ package pa_noc;
   } ty_AXI_RESP;
   // }}} AXI parameters
 
+  // {{{ AHB parameters
+  // AHB-Lite (32-bit address / 32-bit data) unified request/response payload.
+  //
+  // Payload encoding (LSB to MSB):
+  // ---------------------------------------------------------------------------
+  // |70            39|38             7|6      5|4      2|1      |0        |
+  // |HADDR (32 bits) |HDATA (32 bits) |HTRANS  |HSIZE   |HWRITE |HRESP    |
+  // ---------------------------------------------------------------------------
+  //   HADDR  : AHB address (haddr).
+  //   HDATA  : hwdata on a write request, hrdata on a read response.
+  //   HTRANS : transfer type (echoed for the target's address phase).
+  //   HSIZE  : transfer size.
+  //   HWRITE : 1 = write transaction, 0 = read transaction (echoed in response).
+  //   HRESP  : AHB-Lite response (0 = OKAY, 1 = ERROR) on a response packet.
+  //
+  // Only single-beat IDLE/NONSEQ transfers are modelled; hprot/hmastlock and
+  // bursts are intentionally omitted.
+  // Width = 32 + 32 + 2 + 3 + 1 + 1 = 71 bits.
+  localparam int unsigned AHB_PAYLOAD_WIDTH = 71;
+
+  // Field offsets (LSB position) within the AHB-Lite payload.
+  localparam int unsigned AHB_HRESP_LSB  = 0;   // [0]
+  localparam int unsigned AHB_HWRITE_LSB = 1;   // [1]
+  localparam int unsigned AHB_HSIZE_LSB  = 2;   // [4:2]
+  localparam int unsigned AHB_HTRANS_LSB = 5;   // [6:5]
+  localparam int unsigned AHB_HDATA_LSB  = 7;   // [38:7]
+  localparam int unsigned AHB_HADDR_LSB  = 39;  // [70:39]
+
+  // AHB-Lite HTRANS encodings (only the single-beat transfers are used).
+  localparam bit [1:0] AHB_TRANS_IDLE   = 2'b00;
+  localparam bit [1:0] AHB_TRANS_NONSEQ = 2'b10;
+
+  // AHB-Lite HRESP encodings.
+  localparam bit AHB_RESP_OKAY  = 1'b0;
+  localparam bit AHB_RESP_ERROR = 1'b1;
+  // }}} AHB parameters
+
   // Address map entry: maps an address range to a NoC destination node.
   // dstRow/dstCol are stored as 8-bit fields so this struct is independent of
   // GRID_WIDTH; the NI module masks them down to COORD_WIDTH bits at use.

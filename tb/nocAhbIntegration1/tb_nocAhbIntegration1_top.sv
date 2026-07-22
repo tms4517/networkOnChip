@@ -27,7 +27,7 @@ module tb_nocAhbIntegration1_top
 , parameter int unsigned TGTB_COL   = 0
 
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
-, localparam int unsigned PAYLOAD_WIDTH = 71
+, localparam int unsigned PAYLOAD_WIDTH = pa_noc::AHB_PAYLOAD_WIDTH
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (COORD_WIDTH * 4)
 )
 ( input  var logic i_clk

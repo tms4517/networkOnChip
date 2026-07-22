@@ -34,20 +34,7 @@ module niAhbInitiator
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
 , localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1) ?
                                           $clog2(MAX_NI_PER_ROUTER) : 0
-  // AHB-Lite (32-bit address / 32-bit data) unified request/response payload.
-  // Payload encoding (LSB to MSB):
-  // ---------------------------------------------------------------------------
-  // |70            39|38             7|6      5|4      2|1     |0        |
-  // |HADDR (32 bits) |HDATA (32 bits) |HTRANS  |HSIZE   |HWRITE|HRESP    |
-  // ---------------------------------------------------------------------------
-  //   HADDR  : AHB address (haddr).
-  //   HDATA  : hwdata on a write request, hrdata on a read response.
-  //   HTRANS : transfer type (echoed for the target's address phase).
-  //   HSIZE  : transfer size.
-  //   HWRITE : 1 = write transaction, 0 = read (echoed in response).
-  //   HRESP  : AHB-Lite response (0 = OKAY, 1 = ERROR) on a response packet.
-  // Width = 32 + 32 + 2 + 3 + 1 + 1 = 71 bits.
-, localparam int unsigned PAYLOAD_WIDTH = 71
+, localparam int unsigned PAYLOAD_WIDTH = pa_noc::AHB_PAYLOAD_WIDTH
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
                                           + (COORD_WIDTH * 4)
 )
@@ -76,14 +63,6 @@ module niAhbInitiator
 , input  var logic                    i_routerToNiValid
 , output var logic                    o_routerToNiReady
 );
-
-  // {{{ AHB payload field offsets (LSB position within the payload)
-  // Only the response fields are read out here; the request is packed by
-  // concatenation.  Full field map (LSB to MSB):
-  //   HRESP[0], HWRITE[1], HSIZE[4:2], HTRANS[6:5], HDATA[38:7], HADDR[70:39].
-  localparam int unsigned AHB_HRESP_LSB = 0;  // [0]
-  localparam int unsigned AHB_HDATA_LSB = 7;  // [38:7]
-  // }}} AHB payload field offsets
 
   // {{{ FSM state definition
   typedef enum logic [2:0]
@@ -271,7 +250,7 @@ module niAhbInitiator
   logic respErr;
 
   always_comb
-    respErr = respPayload[AHB_HRESP_LSB];
+    respErr = respPayload[pa_noc::AHB_HRESP_LSB];
 
   logic [31:0] hrdata_q;
 
@@ -285,7 +264,7 @@ module niAhbInitiator
     if (!i_arst_n)
       hrdata_q <= '0;
     else if (respAccept)
-      hrdata_q <= respPayload[AHB_HDATA_LSB +: 32];
+      hrdata_q <= respPayload[pa_noc::AHB_HDATA_LSB +: 32];
     else
       hrdata_q <= hrdata_q;
   // }}} Capture response payload
