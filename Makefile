@@ -79,6 +79,16 @@ nocAhbIntegration1Tb:
 	mkdir -p $(LOG_DIR)/nocAhbIntegration1Tb && \
 	$(MAKE) -C $(TB_PATH)/nocAhbIntegration1 | tee $(LOG_DIR)/nocAhbIntegration1Tb/sim.log
 
+.PHONY: nocAxiIntegration2Tb
+nocAxiIntegration2Tb:
+	mkdir -p $(LOG_DIR)/nocAxiIntegration2Tb && \
+	$(MAKE) -C $(TB_PATH)/nocAxiIntegration2 | tee $(LOG_DIR)/nocAxiIntegration2Tb/sim.log
+
+.PHONY: nocAhbIntegration2Tb
+nocAhbIntegration2Tb:
+	mkdir -p $(LOG_DIR)/nocAhbIntegration2Tb && \
+	$(MAKE) -C $(TB_PATH)/nocAhbIntegration2 | tee $(LOG_DIR)/nocAhbIntegration2Tb/sim.log
+
 .PHONY: synthesis
 synthesis:
 	mkdir -p $(LOG_DIR)/synthesis/yosys && \
@@ -102,3 +112,5 @@ clean:
 	$(MAKE) -C $(TB_PATH)/niAhbTarget clean
 	$(MAKE) -C $(TB_PATH)/nocAxiIntegration1 clean
 	$(MAKE) -C $(TB_PATH)/nocAhbIntegration1 clean
+	$(MAKE) -C $(TB_PATH)/nocAxiIntegration2 clean
+	$(MAKE) -C $(TB_PATH)/nocAhbIntegration2 clean
