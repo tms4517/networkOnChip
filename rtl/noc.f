@@ -3,6 +3,8 @@ niApbInitiator.sv
 niApbTarget.sv
 niAxiLiteInitiator.sv
 niAxiLiteTarget.sv
+niAhbInitiator.sv
+niAhbTarget.sv
 niRouterPort.sv
 noc.sv
 mesh.sv

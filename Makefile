@@ -44,6 +44,16 @@ niAxiLiteTargetTb:
 	mkdir -p $(LOG_DIR)/niAxiLiteTargetTb && \
 	$(MAKE) -C $(TB_PATH)/niAxiLiteTarget | tee $(LOG_DIR)/niAxiLiteTargetTb/sim.log
 
+.PHONY: niAhbInitiatorTb
+niAhbInitiatorTb:
+	mkdir -p $(LOG_DIR)/niAhbInitiatorTb && \
+	$(MAKE) -C $(TB_PATH)/niAhbInitiator | tee $(LOG_DIR)/niAhbInitiatorTb/sim.log
+
+.PHONY: niAhbTargetTb
+niAhbTargetTb:
+	mkdir -p $(LOG_DIR)/niAhbTargetTb && \
+	$(MAKE) -C $(TB_PATH)/niAhbTarget | tee $(LOG_DIR)/niAhbTargetTb/sim.log
+
 .PHONY: niRouterPortTb
 niRouterPortTb:
 	mkdir -p $(LOG_DIR)/niRouterPortTb && \
@@ -64,6 +74,21 @@ nocAxiIntegration1Tb:
 	mkdir -p $(LOG_DIR)/nocAxiIntegration1Tb && \
 	$(MAKE) -C $(TB_PATH)/nocAxiIntegration1 | tee $(LOG_DIR)/nocAxiIntegration1Tb/sim.log
 
+.PHONY: nocAhbIntegration1Tb
+nocAhbIntegration1Tb:
+	mkdir -p $(LOG_DIR)/nocAhbIntegration1Tb && \
+	$(MAKE) -C $(TB_PATH)/nocAhbIntegration1 | tee $(LOG_DIR)/nocAhbIntegration1Tb/sim.log
+
+.PHONY: nocAxiIntegration2Tb
+nocAxiIntegration2Tb:
+	mkdir -p $(LOG_DIR)/nocAxiIntegration2Tb && \
+	$(MAKE) -C $(TB_PATH)/nocAxiIntegration2 | tee $(LOG_DIR)/nocAxiIntegration2Tb/sim.log
+
+.PHONY: nocAhbIntegration2Tb
+nocAhbIntegration2Tb:
+	mkdir -p $(LOG_DIR)/nocAhbIntegration2Tb && \
+	$(MAKE) -C $(TB_PATH)/nocAhbIntegration2 | tee $(LOG_DIR)/nocAhbIntegration2Tb/sim.log
+
 .PHONY: synthesis
 synthesis:
 	mkdir -p $(LOG_DIR)/synthesis/yosys && \
@@ -83,4 +108,9 @@ clean:
 	$(MAKE) -C $(TB_PATH)/nocApbIntegration2 clean
 	$(MAKE) -C $(TB_PATH)/niAxiLiteInitiator clean
 	$(MAKE) -C $(TB_PATH)/niAxiLiteTarget clean
+	$(MAKE) -C $(TB_PATH)/niAhbInitiator clean
+	$(MAKE) -C $(TB_PATH)/niAhbTarget clean
 	$(MAKE) -C $(TB_PATH)/nocAxiIntegration1 clean
+	$(MAKE) -C $(TB_PATH)/nocAhbIntegration1 clean
+	$(MAKE) -C $(TB_PATH)/nocAxiIntegration2 clean
+	$(MAKE) -C $(TB_PATH)/nocAhbIntegration2 clean

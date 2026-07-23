@@ -15,3 +15,6 @@ tb/*.verilate
 
 # Ignore generated logs
 **/*.log*
+
+# Ignore VSCode workspace files.
+*.code-workspace
