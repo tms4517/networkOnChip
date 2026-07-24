@@ -5,7 +5,9 @@
 
 TOP_MODULE = tb_nocAxiIntegration1_top
 RTL_PATH = ../../rtl
+ASSERT_PATH = ../assertions
 NOC_FILE_LIST = $(RTL_PATH)/noc.f
+ASSERT_SV = $(ASSERT_PATH)/axil_checker.sv
 TB_SV = tb_nocAxiIntegration1_top.sv
 TB_CPP = tb_nocAxiIntegration1.cpp
 WAVEFORM = waveform_nocAxiIntegration1.vcd
@@ -50,11 +52,11 @@ $(WAVEFORM): ./obj_dir/V$(TOP_MODULE)
 	@echo "### BUILDING SIM ###"
 	make -C obj_dir -f V$(TOP_MODULE).mk V$(TOP_MODULE)
 
-$(STAMP): $(TB_SV) $(TB_CPP)
+$(STAMP): $(TB_SV) $(TB_CPP) $(ASSERT_SV)
 	@echo
 	@echo "### VERILATING ###"
-	verilator -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM --trace --x-assign unique --x-initial unique -cc \
-	-F $(NOC_FILE_LIST) $(TB_SV) \
+	verilator -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-TIMESCALEMOD -Wno-SYNCASYNCNET --assert --trace --x-assign unique --x-initial unique -cc \
+	-F $(NOC_FILE_LIST) $(ASSERT_SV) $(TB_SV) \
 	--top-module $(TOP_MODULE) --exe $(TB_CPP) \
 	$(VERILATOR_CFLAGS) \
 	-GGRID_WIDTH=$(GRID_WIDTH)
