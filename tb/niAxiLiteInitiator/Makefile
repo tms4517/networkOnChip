@@ -12,6 +12,11 @@ TB_CPP = tb_niAxiLiteInitiator.cpp
 WAVEFORM = waveform_niAxiLiteInitiator.vcd
 STAMP = .stamp.verilate
 
+# vaxivip axil_master variant (prototype)
+VIP_PATH = $(CURDIR)/../vip
+TB_CPP_VIP = tb_niAxiLiteInitiator_vaxivip.cpp
+VIP_MDIR = obj_dir_vaxivip
+
 GRID_WIDTH ?= 4
 MAX_SIM_TIME ?= 20000
 TIMEOUT_CYCLES ?= 512
@@ -60,6 +65,31 @@ $(STAMP): $(TB_SV) $(TB_CPP) $(ASSERT_SV)
 	$(VERILATOR_CFLAGS) \
 	-GGRID_WIDTH=$(GRID_WIDTH)
 	@touch $(STAMP)
+
+# Build + run the vaxivip axil_master variant in its own output dir so it does
+# not clash with the default flow. The verilaxi axil_checker is still compiled
+# in (same harness + --assert). -CFLAGS -I$(VIP_PATH) lets the C++ TB find the
+# vendored VIP headers under tb/vip.
+# ASSERT_FLAG defaults to --assert (checker $stops on violation). Override with
+# `make vaxivip ASSERT_FLAG=` to observe the data path without stopping.
+ASSERT_FLAG ?= --assert
+.PHONY: vaxivip
+vaxivip:
+	@echo
+	@echo "### VERILATING (vaxivip) ###"
+	verilator -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-TIMESCALEMOD -Wno-SYNCASYNCNET $(ASSERT_FLAG) --trace --x-assign unique --x-initial unique -cc \
+	--Mdir $(VIP_MDIR) \
+	-F $(NOC_FILE_LIST) $(ASSERT_SV) $(TB_SV) \
+	--top-module $(TOP_MODULE) --exe $(TB_CPP_VIP) \
+	-CFLAGS -I$(VIP_PATH) \
+	$(VERILATOR_CFLAGS) \
+	-GGRID_WIDTH=$(GRID_WIDTH)
+	@echo
+	@echo "### BUILDING SIM (vaxivip) ###"
+	make -C $(VIP_MDIR) -f V$(TOP_MODULE).mk V$(TOP_MODULE)
+	@echo
+	@echo "### SIMULATING (vaxivip) ###"
+	@./$(VIP_MDIR)/V$(TOP_MODULE) +verilator+rand+reset+2
 
 .PHONY: clean
 clean:
