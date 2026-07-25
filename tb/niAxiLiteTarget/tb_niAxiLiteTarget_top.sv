@@ -260,6 +260,37 @@ module tb_niAxiLiteTarget_top
     o_arvalid = axi_arvalid;
   // }}} Monitor outputs
 
+  // {{{ AXI4-Lite protocol checker (verilaxi)
+  // DUT (niAxiLiteTarget) is the AXI4-Lite manager: it drives AW/W/AR to the
+  // subordinate model and receives B/R. Verifies VALID/READY handshake
+  // stability, payload stability, no-X and error-response rules per channel.
+  axil_checker
+  #(.ADDR_WIDTH (32)
+  , .DATA_WIDTH (32)
+  , .LABEL      ("AXIL_TARGET")
+  ) u_axil_chk
+  ( .clk     (i_clk)
+  , .rst_n   (i_arst_n)
+  , .awaddr  (axi_awaddr)
+  , .awvalid (axi_awvalid)
+  , .awready (axi_awready)
+  , .wdata   (axi_wdata)
+  , .wstrb   (axi_wstrb)
+  , .wvalid  (axi_wvalid)
+  , .wready  (axi_wready)
+  , .bresp   (axi_bresp)
+  , .bvalid  (axi_bvalid)
+  , .bready  (axi_bready)
+  , .araddr  (axi_araddr)
+  , .arvalid (axi_arvalid)
+  , .arready (axi_arready)
+  , .rdata   (axi_rdata)
+  , .rresp   (axi_rresp)
+  , .rvalid  (axi_rvalid)
+  , .rready  (axi_rready)
+  );
+  // }}} AXI4-Lite protocol checker
+
 endmodule
 
 `resetall

@@ -550,6 +550,60 @@ module tb_nocAxiIntegration2_top
   );
   // }}} NOC
 
+  // {{{ AXI4-Lite protocol checkers (verilaxi)
+  // One checker per AXI4-Lite port. Initiators present a subordinate interface
+  // (C++ drives AW/W/AR, DUT drives B/R); Targets are managers driving the
+  // local subordinate models. All AW/W/AR ready inputs of the target models are
+  // tied high, matching the niAxiLiteTarget instantiations above.
+  axil_checker #(.ADDR_WIDTH (32), .DATA_WIDTH (32), .LABEL ("AXIL_INIT0"))
+  u_axil_chk_i0
+  ( .clk (i_clk), .rst_n (i_arst_n)
+  , .awaddr (i_awaddr0), .awvalid (i_awvalid0), .awready (o_awready0)
+  , .wdata  (i_wdata0),  .wstrb   (i_wstrb0),   .wvalid  (i_wvalid0)
+  , .wready (o_wready0)
+  , .bresp  (o_bresp0),  .bvalid  (o_bvalid0),  .bready  (i_bready0)
+  , .araddr (i_araddr0), .arvalid (i_arvalid0), .arready (o_arready0)
+  , .rdata  (o_rdata0),  .rresp   (o_rresp0),   .rvalid  (o_rvalid0)
+  , .rready (i_rready0)
+  );
+
+  axil_checker #(.ADDR_WIDTH (32), .DATA_WIDTH (32), .LABEL ("AXIL_INIT1"))
+  u_axil_chk_i1
+  ( .clk (i_clk), .rst_n (i_arst_n)
+  , .awaddr (i_awaddr1), .awvalid (i_awvalid1), .awready (o_awready1)
+  , .wdata  (i_wdata1),  .wstrb   (i_wstrb1),   .wvalid  (i_wvalid1)
+  , .wready (o_wready1)
+  , .bresp  (o_bresp1),  .bvalid  (o_bvalid1),  .bready  (i_bready1)
+  , .araddr (i_araddr1), .arvalid (i_arvalid1), .arready (o_arready1)
+  , .rdata  (o_rdata1),  .rresp   (o_rresp1),   .rvalid  (o_rvalid1)
+  , .rready (i_rready1)
+  );
+
+  axil_checker #(.ADDR_WIDTH (32), .DATA_WIDTH (32), .LABEL ("AXIL_TGTA"))
+  u_axil_chk_tA
+  ( .clk (i_clk), .rst_n (i_arst_n)
+  , .awaddr (axiA_awaddr), .awvalid (axiA_awvalid), .awready (1'b1)
+  , .wdata  (axiA_wdata),  .wstrb   (axiA_wstrb),   .wvalid  (axiA_wvalid)
+  , .wready (1'b1)
+  , .bresp  (axiA_bresp),  .bvalid  (axiA_bvalid),  .bready  (axiA_bready)
+  , .araddr (axiA_araddr), .arvalid (axiA_arvalid), .arready (1'b1)
+  , .rdata  (axiA_rdata),  .rresp   (axiA_rresp),   .rvalid  (axiA_rvalid)
+  , .rready (axiA_rready)
+  );
+
+  axil_checker #(.ADDR_WIDTH (32), .DATA_WIDTH (32), .LABEL ("AXIL_TGTB"))
+  u_axil_chk_tB
+  ( .clk (i_clk), .rst_n (i_arst_n)
+  , .awaddr (axiB_awaddr), .awvalid (axiB_awvalid), .awready (1'b1)
+  , .wdata  (axiB_wdata),  .wstrb   (axiB_wstrb),   .wvalid  (axiB_wvalid)
+  , .wready (1'b1)
+  , .bresp  (axiB_bresp),  .bvalid  (axiB_bvalid),  .bready  (axiB_bready)
+  , .araddr (axiB_araddr), .arvalid (axiB_arvalid), .arready (1'b1)
+  , .rdata  (axiB_rdata),  .rresp   (axiB_rresp),   .rvalid  (axiB_rvalid)
+  , .rready (axiB_rready)
+  );
+  // }}} AXI4-Lite protocol checkers
+
 endmodule
 
 `resetall

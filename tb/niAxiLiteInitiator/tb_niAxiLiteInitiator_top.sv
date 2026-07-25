@@ -189,6 +189,37 @@ module tb_niAxiLiteInitiator_top
   , .i_routerToNiReady (routerToNiReady)
   );
 
+  // {{{ AXI4-Lite protocol checker (verilaxi)
+  // DUT presents an AXI4-Lite subordinate interface; C++ drives AW/W/AR and the
+  // DUT drives B/R. Verifies VALID/READY handshake stability, payload stability,
+  // no-X and error-response rules on every channel.
+  axil_checker
+  #(.ADDR_WIDTH (32)
+  , .DATA_WIDTH (32)
+  , .LABEL      ("AXIL_INITIATOR")
+  ) u_axil_chk
+  ( .clk     (i_clk)
+  , .rst_n   (i_arst_n)
+  , .awaddr  (i_awaddr)
+  , .awvalid (i_awvalid)
+  , .awready (o_awready)
+  , .wdata   (i_wdata)
+  , .wstrb   (i_wstrb)
+  , .wvalid  (i_wvalid)
+  , .wready  (o_wready)
+  , .bresp   (o_bresp)
+  , .bvalid  (o_bvalid)
+  , .bready  (i_bready)
+  , .araddr  (i_araddr)
+  , .arvalid (i_arvalid)
+  , .arready (o_arready)
+  , .rdata   (o_rdata)
+  , .rresp   (o_rresp)
+  , .rvalid  (o_rvalid)
+  , .rready  (i_rready)
+  );
+  // }}} AXI4-Lite protocol checker
+
 endmodule
 
 `resetall
