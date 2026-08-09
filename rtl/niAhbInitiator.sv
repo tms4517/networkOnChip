@@ -34,7 +34,8 @@ module niAhbInitiator
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
 , localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1) ?
                                           $clog2(MAX_NI_PER_ROUTER) : 0
-, localparam int unsigned PAYLOAD_WIDTH = pa_noc::AHB_PAYLOAD_WIDTH
+  // Fabric payload width; native fields occupy the LSBs, MSBs are zero-padded.
+, parameter  int unsigned PAYLOAD_WIDTH = pa_noc::AHB_PAYLOAD_WIDTH
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
                                           + (COORD_WIDTH * 4)
 )
@@ -199,7 +200,7 @@ module niAhbInitiator
   logic [PAYLOAD_WIDTH-1:0] ahbPayload;
 
   always_comb
-    ahbPayload = {haddr_q, hwdata_q, htrans_q, hsize_q, hwrite_q, 1'b0};
+    ahbPayload = PAYLOAD_WIDTH'({haddr_q, hwdata_q, htrans_q, hsize_q, hwrite_q, 1'b0});
 
   logic [COORD_WIDTH-1:0] srcRow;
   logic [COORD_WIDTH-1:0] srcCol;
