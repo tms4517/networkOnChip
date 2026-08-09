@@ -1,26 +1,25 @@
-// Integration testbench wrapper
-// Instantiates the NOC with TWO niApbInitiator masters (on different routers)
-// and TWO niApbTarget slaves (on different routers).  Both initiators share an
-// address map that can reach either target, so this exercises concurrent
-// multi-initiator / multi-target traffic and the dynamic source-based response
-// routing of niApbTarget.
+// Heterogeneous-protocol integration testbench wrapper
+// Demonstrates cross-protocol traffic over the NoC using the canonical payload:
+// a single AHB-Lite initiator transparently accesses an AXI4-Lite target AND an
+// APB target.  Each NI translates its native AMBA protocol to/from the common
+// canonical transaction payload, so masters and slaves of different protocols
+// interoperate without any external bridge.
 //
 // Node placement (default 4x4 grid):
-//   Initiator 0 : (0,0)              Target A : (0, GRID_WIDTH-1)
-//   Initiator 1 : (GW-1,GW-1)        Target B : (GRID_WIDTH-1, 0)
+//   AHB initiator : (0, 0)
+//   AXI target A  : (0, GRID_WIDTH-1)   regs preset to 0xA000_0000 + n
+//   APB target B  : (GRID_WIDTH-1, 0)   regs preset to 0xB000_0000 + n
 //
-// Address map (shared by both initiators):
-//   0x0000_0000 - 0x0FFF_FFFF -> Target A
-//   0x1000_0000 - 0x1FFF_FFFF -> Target B
+// Address map (in the AHB initiator):
+//   0x0000_0000 - 0x0FFF_FFFF -> AXI target A
+//   0x1000_0000 - 0x1FFF_FFFF -> APB target B
 
 `default_nettype none
 
-module tb_nocApbIntegration1_top
+module tb_nocHeteroIntegration1_top
 #(parameter int unsigned GRID_WIDTH = 4
-, parameter int unsigned INIT0_ROW  = 0
-, parameter int unsigned INIT0_COL  = 0
-, parameter int unsigned INIT1_ROW  = GRID_WIDTH - 1
-, parameter int unsigned INIT1_COL  = GRID_WIDTH - 1
+, parameter int unsigned INIT_ROW   = 0
+, parameter int unsigned INIT_COL   = 0
 , parameter int unsigned TGTA_ROW   = 0
 , parameter int unsigned TGTA_COL   = GRID_WIDTH - 1
 , parameter int unsigned TGTB_ROW   = GRID_WIDTH - 1
@@ -33,30 +32,19 @@ module tb_nocApbIntegration1_top
 ( input  var logic i_clk
 , input  var logic i_arst_n
 
-  // Initiator 0 APB master interface — driven by C++
-, input  var logic [31:0] i_paddr0
-, input  var logic [31:0] i_pwdata0
-, input  var logic        i_pwrite0
-, input  var logic [3:0]  i_pstrb0
-, input  var logic        i_psel0
-, input  var logic        i_penable0
-, output var logic        o_pready0
-, output var logic        o_pslverr0
-, output var logic [31:0] o_prdata0
-
-  // Initiator 1 APB master interface — driven by C++
-, input  var logic [31:0] i_paddr1
-, input  var logic [31:0] i_pwdata1
-, input  var logic        i_pwrite1
-, input  var logic [3:0]  i_pstrb1
-, input  var logic        i_psel1
-, input  var logic        i_penable1
-, output var logic        o_pready1
-, output var logic        o_pslverr1
-, output var logic [31:0] o_prdata1
+  // AHB-Lite master interface — driven by C++
+, input  var logic [31:0] i_haddr
+, input  var logic [31:0] i_hwdata
+, input  var logic        i_hwrite
+, input  var logic [2:0]  i_hsize
+, input  var logic [1:0]  i_htrans
+, input  var logic        i_hsel
+, output var logic        o_hreadyout
+, output var logic        o_hresp
+, output var logic [31:0] o_hrdata
 );
 
-  // {{{ Address map (shared by both initiators)
+  // {{{ Address map — routes each range to a different-protocol target
   localparam int unsigned NUM_ENTRIES = 2;
 
   localparam pa_noc::ty_ADDR_MAP_ENTRY [NUM_ENTRIES-1:0] ADDR_MAP =
@@ -86,101 +74,61 @@ module tb_nocApbIntegration1_top
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0]                   routerToNiReady;
   // }}} NOC interconnect arrays
 
-  // {{{ Initiator 0 NI — router-side signals
-  logic [PACKET_WIDTH-1:0] niToRouter_i0;
-  logic                    niToRouterValid_i0;
-  logic                    niToRouterReady_i0;
-  logic [PACKET_WIDTH-1:0] routerToNi_i0;
-  logic                    routerToNiValid_i0;
-  logic                    routerToNiReady_i0;
+  // {{{ AHB initiator NI
+  logic [PACKET_WIDTH-1:0] niToRouter_init;
+  logic                    niToRouterValid_init;
+  logic                    niToRouterReady_init;
+  logic [PACKET_WIDTH-1:0] routerToNi_init;
+  logic                    routerToNiValid_init;
+  logic                    routerToNiReady_init;
+
+  // HREADY of the single-slave AHB port is the NI's own HREADYOUT.
+  logic                    ahb_hreadyout;
 
   always_comb
-    niToRouterReady_i0 = niToRouterReady[INIT0_ROW][INIT0_COL];
+    niToRouterReady_init = niToRouterReady[INIT_ROW][INIT_COL];
 
   always_comb
-    routerToNi_i0 = routerToNi[INIT0_ROW][INIT0_COL];
+    routerToNi_init = routerToNi[INIT_ROW][INIT_COL];
 
   always_comb
-    routerToNiValid_i0 = routerToNiValid[INIT0_ROW][INIT0_COL];
+    routerToNiValid_init = routerToNiValid[INIT_ROW][INIT_COL];
 
-  niApbInitiator
+  niAhbInitiator
   #(.GRID_WIDTH            (GRID_WIDTH)
   , .NUM_ADDR_MAP_ENTRIES  (NUM_ENTRIES)
   , .ADDR_MAP              (ADDR_MAP)
-  , .SRC_ROW               (INIT0_ROW)
-  , .SRC_COL               (INIT0_COL)
-  ) u_init0
-  ( .i_clk     (i_clk)
-  , .i_arst_n  (i_arst_n)
+  , .SRC_ROW               (INIT_ROW)
+  , .SRC_COL               (INIT_COL)
+  ) u_init
+  ( .i_clk       (i_clk)
+  , .i_arst_n    (i_arst_n)
 
-  , .i_paddr   (i_paddr0)
-  , .i_pwdata  (i_pwdata0)
-  , .i_pwrite  (i_pwrite0)
-  , .i_pstrb   (i_pstrb0)
-  , .i_psel    (i_psel0)
-  , .i_penable (i_penable0)
-  , .o_pready  (o_pready0)
-  , .o_pslverr (o_pslverr0)
-  , .o_prdata  (o_prdata0)
+  , .i_haddr     (i_haddr)
+  , .i_hwrite    (i_hwrite)
+  , .i_hsize     (i_hsize)
+  , .i_htrans    (i_htrans)
+  , .i_hwdata    (i_hwdata)
+  , .i_hsel      (i_hsel)
+  , .i_hready    (ahb_hreadyout)
+  , .o_hreadyout (ahb_hreadyout)
+  , .o_hresp     (o_hresp)
+  , .o_hrdata    (o_hrdata)
 
-  , .o_niToRouter      (niToRouter_i0)
-  , .o_niToRouterValid (niToRouterValid_i0)
-  , .i_niToRouterReady (niToRouterReady_i0)
+  , .o_niToRouter      (niToRouter_init)
+  , .o_niToRouterValid (niToRouterValid_init)
+  , .i_niToRouterReady (niToRouterReady_init)
 
-  , .i_routerToNi      (routerToNi_i0)
-  , .i_routerToNiValid (routerToNiValid_i0)
-  , .o_routerToNiReady (routerToNiReady_i0)
+  , .i_routerToNi      (routerToNi_init)
+  , .i_routerToNiValid (routerToNiValid_init)
+  , .o_routerToNiReady (routerToNiReady_init)
   );
-  // }}} Initiator 0
-
-  // {{{ Initiator 1 NI — router-side signals
-  logic [PACKET_WIDTH-1:0] niToRouter_i1;
-  logic                    niToRouterValid_i1;
-  logic                    niToRouterReady_i1;
-  logic [PACKET_WIDTH-1:0] routerToNi_i1;
-  logic                    routerToNiValid_i1;
-  logic                    routerToNiReady_i1;
 
   always_comb
-    niToRouterReady_i1 = niToRouterReady[INIT1_ROW][INIT1_COL];
+    o_hreadyout = ahb_hreadyout;
+  // }}} AHB initiator NI
 
-  always_comb
-    routerToNi_i1 = routerToNi[INIT1_ROW][INIT1_COL];
-
-  always_comb
-    routerToNiValid_i1 = routerToNiValid[INIT1_ROW][INIT1_COL];
-
-  niApbInitiator
-  #(.GRID_WIDTH            (GRID_WIDTH)
-  , .NUM_ADDR_MAP_ENTRIES  (NUM_ENTRIES)
-  , .ADDR_MAP              (ADDR_MAP)
-  , .SRC_ROW               (INIT1_ROW)
-  , .SRC_COL               (INIT1_COL)
-  ) u_init1
-  ( .i_clk     (i_clk)
-  , .i_arst_n  (i_arst_n)
-
-  , .i_paddr   (i_paddr1)
-  , .i_pwdata  (i_pwdata1)
-  , .i_pwrite  (i_pwrite1)
-  , .i_pstrb   (i_pstrb1)
-  , .i_psel    (i_psel1)
-  , .i_penable (i_penable1)
-  , .o_pready  (o_pready1)
-  , .o_pslverr (o_pslverr1)
-  , .o_prdata  (o_prdata1)
-
-  , .o_niToRouter      (niToRouter_i1)
-  , .o_niToRouterValid (niToRouterValid_i1)
-  , .i_niToRouterReady (niToRouterReady_i1)
-
-  , .i_routerToNi      (routerToNi_i1)
-  , .i_routerToNiValid (routerToNiValid_i1)
-  , .o_routerToNiReady (routerToNiReady_i1)
-  );
-  // }}} Initiator 1
-
-  // {{{ Target A NI + APB slave
+  // {{{ Target A — AXI4-Lite target NI + AXI subordinate
   logic [PACKET_WIDTH-1:0] niToRouter_tA;
   logic                    niToRouterValid_tA;
   logic                    niToRouterReady_tA;
@@ -188,15 +136,20 @@ module tb_nocApbIntegration1_top
   logic                    routerToNiValid_tA;
   logic                    routerToNiReady_tA;
 
-  logic [31:0] apbA_paddr;
-  logic [31:0] apbA_pwdata;
-  logic        apbA_pwrite;
-  logic [3:0]  apbA_pstrb;
-  logic        apbA_psel;
-  logic        apbA_penable;
-  logic        apbA_pready;
-  logic        apbA_pslverr;
-  logic [31:0] apbA_prdata;
+  logic [31:0] axiA_awaddr;
+  logic        axiA_awvalid;
+  logic [31:0] axiA_wdata;
+  logic [3:0]  axiA_wstrb;
+  logic        axiA_wvalid;
+  logic        axiA_bready;
+  logic [31:0] axiA_araddr;
+  logic        axiA_arvalid;
+  logic        axiA_rready;
+  logic [1:0]  axiA_bresp;
+  logic        axiA_bvalid;
+  logic [31:0] axiA_rdata;
+  logic [1:0]  axiA_rresp;
+  logic        axiA_rvalid;
 
   always_comb
     routerToNi_tA = routerToNi[TGTA_ROW][TGTA_COL];
@@ -207,7 +160,7 @@ module tb_nocApbIntegration1_top
   always_comb
     niToRouterReady_tA = niToRouterReady[TGTA_ROW][TGTA_COL];
 
-  niApbTarget
+  niAxiLiteTarget
   #(.GRID_WIDTH (GRID_WIDTH)
   , .MY_ROW     (TGTA_ROW)
   , .MY_COL     (TGTA_COL)
@@ -215,15 +168,23 @@ module tb_nocApbIntegration1_top
   ( .i_clk     (i_clk)
   , .i_arst_n  (i_arst_n)
 
-  , .o_paddr   (apbA_paddr)
-  , .o_pwdata  (apbA_pwdata)
-  , .o_pwrite  (apbA_pwrite)
-  , .o_pstrb   (apbA_pstrb)
-  , .o_psel    (apbA_psel)
-  , .o_penable (apbA_penable)
-  , .i_pready  (apbA_pready)
-  , .i_pslverr (apbA_pslverr)
-  , .i_prdata  (apbA_prdata)
+  , .o_awaddr  (axiA_awaddr)
+  , .o_awvalid (axiA_awvalid)
+  , .i_awready (1'b1)
+  , .o_wdata   (axiA_wdata)
+  , .o_wstrb   (axiA_wstrb)
+  , .o_wvalid  (axiA_wvalid)
+  , .i_wready  (1'b1)
+  , .i_bresp   (axiA_bresp)
+  , .i_bvalid  (axiA_bvalid)
+  , .o_bready  (axiA_bready)
+  , .o_araddr  (axiA_araddr)
+  , .o_arvalid (axiA_arvalid)
+  , .i_arready (1'b1)
+  , .i_rdata   (axiA_rdata)
+  , .i_rresp   (axiA_rresp)
+  , .i_rvalid  (axiA_rvalid)
+  , .o_rready  (axiA_rready)
 
   , .i_routerToNi      (routerToNi_tA)
   , .i_routerToNiValid (routerToNiValid_tA)
@@ -234,17 +195,27 @@ module tb_nocApbIntegration1_top
   , .i_niToRouterReady (niToRouterReady_tA)
   );
 
-  // Simple APB slave for Target A: 4 word registers, immediate PREADY.
+  // Simple single-outstanding AXI4-Lite subordinate: 4 word registers.
   logic [31:0] slaveA_reg [0:3];
+  logic [31:0] awaddrA_q;
+  logic        bpendingA_q;
+  logic [31:0] rdataA_q;
+  logic        rpendingA_q;
 
   always_comb
-    apbA_pslverr = 1'b0;
+    axiA_bvalid = bpendingA_q;
 
   always_comb
-    apbA_pready = apbA_psel && apbA_penable;
+    axiA_bresp = 2'b00;
 
   always_comb
-    apbA_prdata = slaveA_reg[apbA_paddr[3:2]];
+    axiA_rvalid = rpendingA_q;
+
+  always_comb
+    axiA_rdata = rdataA_q;
+
+  always_comb
+    axiA_rresp = 2'b00;
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n) begin
@@ -252,12 +223,28 @@ module tb_nocApbIntegration1_top
       slaveA_reg[1] <= 32'hA111_1111;
       slaveA_reg[2] <= 32'hA222_2222;
       slaveA_reg[3] <= 32'hA333_3333;
-    end else if (apbA_psel && apbA_penable && apbA_pwrite) begin
-      slaveA_reg[apbA_paddr[3:2]] <= apbA_pwdata;
+      awaddrA_q     <= '0;
+      bpendingA_q   <= 1'b0;
+      rdataA_q      <= '0;
+      rpendingA_q   <= 1'b0;
+    end else begin
+      if (axiA_awvalid)
+        awaddrA_q <= axiA_awaddr;
+      if (axiA_wvalid)
+        slaveA_reg[awaddrA_q[3:2]] <= axiA_wdata;
+      if (axiA_wvalid)
+        bpendingA_q <= 1'b1;
+      else if (axiA_bvalid && axiA_bready)
+        bpendingA_q <= 1'b0;
+      if (axiA_arvalid) begin
+        rdataA_q    <= slaveA_reg[axiA_araddr[3:2]];
+        rpendingA_q <= 1'b1;
+      end else if (axiA_rvalid && axiA_rready)
+        rpendingA_q <= 1'b0;
     end
   // }}} Target A
 
-  // {{{ Target B NI + APB slave
+  // {{{ Target B — APB target NI + APB subordinate
   logic [PACKET_WIDTH-1:0] niToRouter_tB;
   logic                    niToRouterValid_tB;
   logic                    niToRouterReady_tB;
@@ -311,7 +298,7 @@ module tb_nocApbIntegration1_top
   , .i_niToRouterReady (niToRouterReady_tB)
   );
 
-  // Simple APB slave for Target B: 4 word registers, immediate PREADY.
+  // Simple APB subordinate: 4 word registers, immediate PREADY.
   logic [31:0] slaveB_reg [0:3];
 
   always_comb
@@ -337,16 +324,11 @@ module tb_nocApbIntegration1_top
   // {{{ NI port connections (single driver per element)
   for (genvar i = 0; i < GRID_WIDTH; i++) begin: gen_ni_row
     for (genvar j = 0; j < GRID_WIDTH; j++) begin: gen_ni_col
-      if (i == INIT0_ROW && j == INIT0_COL) begin: gen_i0
-        always_comb niToRouter[i][j]      = niToRouter_i0;
-        always_comb niToRouterValid[i][j] = niToRouterValid_i0;
-        always_comb routerToNiReady[i][j] = routerToNiReady_i0;
-      end: gen_i0
-      else if (i == INIT1_ROW && j == INIT1_COL) begin: gen_i1
-        always_comb niToRouter[i][j]      = niToRouter_i1;
-        always_comb niToRouterValid[i][j] = niToRouterValid_i1;
-        always_comb routerToNiReady[i][j] = routerToNiReady_i1;
-      end: gen_i1
+      if (i == INIT_ROW && j == INIT_COL) begin: gen_init
+        always_comb niToRouter[i][j]      = niToRouter_init;
+        always_comb niToRouterValid[i][j] = niToRouterValid_init;
+        always_comb routerToNiReady[i][j] = routerToNiReady_init;
+      end: gen_init
       else if (i == TGTA_ROW && j == TGTA_COL) begin: gen_tA
         always_comb niToRouter[i][j]      = niToRouter_tA;
         always_comb niToRouterValid[i][j] = niToRouterValid_tA;
@@ -369,6 +351,7 @@ module tb_nocApbIntegration1_top
   // {{{ NOC
   noc
   #(.GRID_WIDTH (GRID_WIDTH)
+  , .PAYLOAD_WIDTH (PAYLOAD_WIDTH)
   ) u_noc
   ( .i_clk     (i_clk)
   , .i_arst_n  (i_arst_n)

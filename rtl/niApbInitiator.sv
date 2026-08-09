@@ -5,12 +5,12 @@
 // determine the destination router, assembles the NoC packet, and drives the
 // router's ingress handshake.
 //
-// WRITE transactions: the packet is forwarded into the mesh and the APB bus is
-// stalled until the router accepts it.
-//
-// READ transactions: a request packet (with PWRITE=0) is forwarded into the
-// mesh.  The APB bus is then stalled until a response packet arrives back
-// through the router-to-NI port carrying PRDATA in the PWDATA field position.
+// WRITE and READ transactions both forward a request packet into the mesh and
+// stall the APB access phase until a response packet arrives back through the
+// router-to-NI port.  The read response carries PRDATA in the canonical DATA
+// field; the write response carries only the completion status.  This
+// round-trip completion matches the AXI NI so APB masters can interoperate with
+// AHB / AXI-Lite targets.
 
 `default_nettype none
 
@@ -26,7 +26,7 @@ module niApbInitiator
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
 , localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1) ?
                                           $clog2(MAX_NI_PER_ROUTER) : 0
-, localparam int unsigned PAYLOAD_WIDTH = pa_noc::APB_PAYLOAD_WIDTH
+, localparam int unsigned PAYLOAD_WIDTH = pa_noc::CANON_PAYLOAD_WIDTH
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
                                           + (COORD_WIDTH * 4)
 )
@@ -123,15 +123,12 @@ module niApbInitiator
   // }}} Address decode
 
   // {{{ Pack APB Payload
-  // APB Payload encoding:
-  // -------------------------------------------------------
-  // |68            37|36             5|4      |3        0 |
-  // |PADDR (32 bits) |PWDATA (32 bits)|PWRITE |PSTRB(4b)  |
-  // -------------------------------------------------------
+  // Canonical payload (MSB to LSB): {ADDR, DATA, WSTRB, WRITE, RESP}.
+  // PSTRB maps to WSTRB; RESP is zero on a request.
   logic [PAYLOAD_WIDTH-1:0] apbPayload;
 
   always_comb
-    apbPayload = {i_paddr, i_pwdata, i_pwrite, i_pstrb};
+    apbPayload = {i_paddr, i_pwdata, i_pstrb, i_pwrite, pa_noc::AXI_RESP_OKAY};
 
   // Full NoC packet layout (MSB to LSB):
   // {Payload, srcNiId, srcRow, srcCol, dstNiId, dstRow, dstCol}
@@ -172,21 +169,21 @@ module niApbInitiator
   //        packet arrives back through the router-to-NI port.
   // FSM states:
   //   ST_IDLE      — ready for a new APB transaction
-  //   ST_READ_RESP — read request accepted by router, waiting for response
+  //   ST_WAIT_RESP — request accepted by router, waiting for the response
 
   logic accessPhase;
 
   always_comb
     accessPhase = i_psel && i_penable;
 
-  logic readReqAccepted;
+  logic reqAccepted;
 
   always_comb
-    readReqAccepted = accessPhase && !i_pwrite && addrHit && i_niToRouterReady;
+    reqAccepted = accessPhase && addrHit && i_niToRouterReady;
 
   typedef enum logic
   { ST_IDLE
-  , ST_READ_RESP
+  , ST_WAIT_RESP
   } ty_state;
 
   ty_state state_q, state_d;
@@ -200,9 +197,9 @@ module niApbInitiator
   always_comb
     case (state_q)
       ST_IDLE:
-        state_d = readReqAccepted ? ST_READ_RESP : ST_IDLE;
-      ST_READ_RESP:
-        state_d = i_routerToNiValid ? ST_IDLE : ST_READ_RESP;
+        state_d = reqAccepted ? ST_WAIT_RESP : ST_IDLE;
+      ST_WAIT_RESP:
+        state_d = i_routerToNiValid ? ST_IDLE : ST_WAIT_RESP;
       default:
         state_d = ST_IDLE;
     endcase
@@ -219,43 +216,39 @@ module niApbInitiator
   // NoC response ready
   // Accept a response only when waiting for one.
   always_comb
-    if (state_q == ST_READ_RESP)
+    if (state_q == ST_WAIT_RESP)
       o_routerToNiReady = 1'b1;
     else
       o_routerToNiReady = 1'b0;
 
-  // Response payload uses the same encoding as the request;
-  // PRDATA occupies the PWDATA field position: payload bits [36:5].
+  // Response payload uses the canonical encoding; PRDATA occupies the DATA
+  // field position.
   logic [PAYLOAD_WIDTH-1:0] respPayload;
 
   always_comb
     respPayload = i_routerToNi[PACKET_WIDTH-1 -: PAYLOAD_WIDTH];
 
   always_comb
-    if (state_q == ST_READ_RESP && i_routerToNiValid)
-      o_prdata = respPayload[36:5];
+    if (state_q == ST_WAIT_RESP && i_routerToNiValid)
+      o_prdata = respPayload[pa_noc::CANON_DATA_LSB +: 32];
     else
       o_prdata = '0;
 
-  // Writes:       complete when router accepts the packet.
-  // Reads (IDLE): stall while request is being sent.
-  // Reads (RESP): complete when response arrives.
-  // No addr hit:  complete immediately (SLVERR).
+  // Reads and writes both complete when the response packet arrives.
+  // No addr hit: complete immediately (SLVERR).
   always_comb
-    if (state_q == ST_READ_RESP)
+    if (state_q == ST_WAIT_RESP)
       o_pready = i_routerToNiValid;
     else if (!accessPhase)
       o_pready = 1'b0;
     else if (!addrHit)
       o_pready = 1'b1;
-    else if (i_pwrite)
-      o_pready = i_niToRouterReady;
     else
       o_pready = 1'b0;
 
   always_comb
-    if (state_q == ST_READ_RESP)
-      o_pslverr = 1'b0;
+    if (state_q == ST_WAIT_RESP)
+      o_pslverr = (respPayload[pa_noc::CANON_RESP_LSB +: 2] != pa_noc::AXI_RESP_OKAY);
     else if (!accessPhase)
       o_pslverr = 1'b0;
     else if (!addrHit)

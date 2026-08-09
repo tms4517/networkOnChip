@@ -1,14 +1,13 @@
-# Testbench: NoC integration — 2 initiators / 2 targets
-# Drives concurrent APB traffic from two niApbInitiator masters to two
-# niApbTarget slaves through the NOC and checks read responses route back to
-# the correct initiator.
+# Testbench: NoC heterogeneous-protocol integration
+# A single AHB-Lite initiator drives an AXI4-Lite target and an APB target
+# across the NoC via the canonical payload, proving cross-protocol interop.
 
-TOP_MODULE = tb_nocApbIntegration1_top
+TOP_MODULE = tb_nocHeteroIntegration1_top
 RTL_PATH = ../../rtl
 NOC_FILE_LIST = $(RTL_PATH)/noc.f
-TB_SV = tb_nocApbIntegration1_top.sv
-TB_CPP = tb_nocApbIntegration1.cpp
-WAVEFORM = waveform_nocApbIntegration1.vcd
+TB_SV = tb_nocHeteroIntegration1_top.sv
+TB_CPP = tb_nocHeteroIntegration1.cpp
+WAVEFORM = waveform_nocHeteroIntegration1.vcd
 STAMP = .stamp.verilate
 
 GRID_WIDTH ?= 4

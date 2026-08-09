@@ -24,8 +24,8 @@
 
 #define NUM_ROUTERS (GRID_WIDTH * GRID_WIDTH)
 #define COORD_WIDTH 2 // clog2(4)
-#define PAYLOAD_WIDTH 69
-#define PACKET_WIDTH (PAYLOAD_WIDTH + COORD_WIDTH * 4) // 77
+#define PAYLOAD_WIDTH 71
+#define PACKET_WIDTH (PAYLOAD_WIDTH + COORD_WIDTH * 4) // 79
 
 vluint64_t sim_time = 0;
 vluint64_t posedge_cnt = 0;
@@ -65,15 +65,16 @@ static uint32_t extractBits(Vtb_niApbInitiator_top *dut, int start_bit, int widt
 }
 
 // Decode APB payload fields directly from packet bits for a given router.
-// Packet layout (77 bits):
+// Packet layout (79 bits) — canonical payload:
 //   [1:0]   = dstCol
 //   [3:2]   = dstRow
 //   [5:4]   = srcCol
 //   [7:6]   = srcRow
-//   [11:8]  = PSTRB
-//   [12]    = PWRITE
-//   [44:13] = PWDATA
-//   [76:45] = PADDR
+//   [9:8]   = RESP
+//   [10]    = WRITE
+//   [14:11] = WSTRB (PSTRB)
+//   [46:15] = DATA  (PWDATA)
+//   [78:47] = ADDR  (PADDR)
 struct DecodedPayload {
   uint32_t paddr;
   uint32_t pwdata;
@@ -84,10 +85,10 @@ struct DecodedPayload {
 static DecodedPayload decodePacketAtRouter(Vtb_niApbInitiator_top *dut, int row, int col) {
   int pkt_start = routerIndex(row, col) * PACKET_WIDTH;
   DecodedPayload d;
-  d.pstrb  = extractBits(dut, pkt_start + 8,  4);
-  d.pwrite = extractBits(dut, pkt_start + 12, 1);
-  d.pwdata = extractBits(dut, pkt_start + 13, 32);
-  d.paddr  = extractBits(dut, pkt_start + 45, 32);
+  d.pwrite = extractBits(dut, pkt_start + 10, 1);
+  d.pstrb  = extractBits(dut, pkt_start + 11, 4);
+  d.pwdata = extractBits(dut, pkt_start + 15, 32);
+  d.paddr  = extractBits(dut, pkt_start + 47, 32);
   return d;
 }
 
@@ -117,6 +118,8 @@ int main(int argc, char **argv, char **env) {
   vluint64_t access_start = 0;
   bool waiting_for_dest = false;
   vluint64_t dest_wait_start = 0;
+  bool waiting_complete = false;
+  vluint64_t comp_start = 0;
 
   std::cout << "=== niApbInitiator Testbench ===" << std::endl;
   std::cout << "Running " << NUM_TESTS << " APB write transactions" << std::endl;
@@ -183,13 +186,35 @@ int main(int argc, char **argv, char **env) {
           }
 
           waiting_for_dest = false;
-          current_test++;
-          apb_phase = APB_IDLE;
+          waiting_complete = true;
+          comp_start = posedge_cnt;
         } else if ((posedge_cnt - dest_wait_start) > TIMEOUT_CYCLES) {
           std::cout << "  FAIL: Test " << current_test
                     << " — timeout waiting for packet at destination ("
                     << t.exp_dst_row << "," << t.exp_dst_col << ")"
                     << std::endl;
+          m_trace->close();
+          delete dut;
+          return EXIT_FAILURE;
+        }
+      } else if (waiting_complete) {
+        // Wait for the initiator to complete the APB access (round-trip).
+        if (dut->o_pready) {
+          if (dut->o_pslverr) {
+            std::cout << "  FAIL: Test " << current_test
+                      << " — SLVERR on APB transaction" << std::endl;
+            m_trace->close();
+            delete dut;
+            return EXIT_FAILURE;
+          }
+          dut->i_psel    = 0;
+          dut->i_penable = 0;
+          waiting_complete = false;
+          current_test++;
+          apb_phase = APB_IDLE;
+        } else if ((posedge_cnt - comp_start) > TIMEOUT_CYCLES) {
+          std::cout << "  FAIL: Test " << current_test
+                    << " — APB PREADY timeout" << std::endl;
           m_trace->close();
           delete dut;
           return EXIT_FAILURE;
@@ -221,28 +246,11 @@ int main(int argc, char **argv, char **env) {
             break;
 
           case APB_ACCESS:
-            // Wait for PREADY
-            if (dut->o_pready) {
-              if (dut->o_pslverr) {
-                std::cout << "  FAIL: Test " << current_test
-                          << " — SLVERR on APB transaction" << std::endl;
-                m_trace->close();
-                delete dut;
-                return EXIT_FAILURE;
-              }
-              // Transaction accepted by niApbInitiator, deassert bus
-              dut->i_psel    = 0;
-              dut->i_penable = 0;
-              // Now wait for packet at destination
-              waiting_for_dest = true;
-              dest_wait_start = posedge_cnt;
-            } else if ((posedge_cnt - access_start) > TIMEOUT_CYCLES) {
-              std::cout << "  FAIL: Test " << current_test
-                        << " — APB PREADY timeout" << std::endl;
-              m_trace->close();
-              delete dut;
-              return EXIT_FAILURE;
-            }
+            // Request is now being forwarded into the mesh; poll for its arrival
+            // at the destination router.  The APB access completes separately
+            // once the round-trip response returns (see waiting_complete).
+            waiting_for_dest = true;
+            dest_wait_start = posedge_cnt;
             break;
 
           default:

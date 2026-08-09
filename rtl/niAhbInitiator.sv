@@ -9,13 +9,12 @@
 // HWDATA in ST_SETUP, and then stalls the data phase (HREADYOUT low) until the
 // NoC transaction completes.
 
-// WRITE transactions are posted: a request packet is forwarded into the mesh
-// and the AHB access completes (OKAY) as soon as the router accepts it; no
-// response round-trip is awaited (matching the APB/AXI NI behaviour).
-
-// READ transactions forward a request packet (HWRITE=0) and stall the data
-// phase until the response packet returns through the router-to-NI port
-// carrying HRDATA (in the HDATA field position) and the response status.
+// WRITE and READ transactions both forward a request packet into the mesh and
+// stall the AHB data phase until the target's response packet returns.  The
+// write response carries only the completion status (canonical RESP); the read
+// response additionally carries HRDATA in the canonical DATA field.  This
+// non-posted (round-trip) completion matches the AXI NI behaviour so that an
+// AHB master can interoperate with AXI-Lite / APB targets.
 
 // If the address does not match any map entry, the access completes with a
 // two-cycle AHB ERROR response and no packet is forwarded.
@@ -34,7 +33,7 @@ module niAhbInitiator
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
 , localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1) ?
                                           $clog2(MAX_NI_PER_ROUTER) : 0
-, localparam int unsigned PAYLOAD_WIDTH = pa_noc::AHB_PAYLOAD_WIDTH
+, localparam int unsigned PAYLOAD_WIDTH = pa_noc::CANON_PAYLOAD_WIDTH
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
                                           + (COORD_WIDTH * 4)
 )
@@ -83,7 +82,6 @@ module niAhbInitiator
   logic [31:0] haddr_q;
   logic        hwrite_q;
   logic [2:0]  hsize_q;
-  logic [1:0]  htrans_q;
   logic [31:0] hwdata_q;
 
   // An active transfer is requested when selected, the previous transfer has
@@ -116,14 +114,6 @@ module niAhbInitiator
       hsize_q  <= i_hsize;
     else
       hsize_q  <= hsize_q;
-
-  always_ff @(posedge i_clk or negedge i_arst_n)
-    if (!i_arst_n)
-      htrans_q <= '0;
-    else if (acceptAddr)
-      htrans_q <= i_htrans;
-    else
-      htrans_q <= htrans_q;
 
   // HWDATA is valid in the data phase, i.e. the cycle the FSM sits in ST_SETUP.
   always_ff @(posedge i_clk or negedge i_arst_n)
@@ -195,11 +185,17 @@ module niAhbInitiator
   // Full NoC packet layout (MSB to LSB):
   // {Payload, srcNiId, srcRow, srcCol, dstNiId, dstRow, dstCol}
   // When MAX_NI_PER_ROUTER = 1, NI_ID_WIDTH = 0 and no ID fields exist.
-  // The HRESP field is zero on a request.
+  // AHB HSIZE is translated to the canonical byte strobe; RESP is zero on a
+  // request.  Canonical payload: {ADDR, DATA, WSTRB, WRITE, RESP}.
   logic [PAYLOAD_WIDTH-1:0] ahbPayload;
 
   always_comb
-    ahbPayload = {haddr_q, hwdata_q, htrans_q, hsize_q, hwrite_q, 1'b0};
+    ahbPayload = {haddr_q
+                 , hwdata_q
+                 , pa_noc::canonHsizeToWstrb(hsize_q, haddr_q[1:0])
+                 , hwrite_q
+                 , pa_noc::AXI_RESP_OKAY
+                 };
 
   logic [COORD_WIDTH-1:0] srcRow;
   logic [COORD_WIDTH-1:0] srcCol;
@@ -240,8 +236,8 @@ module niAhbInitiator
   // }}} Pack AHB request payload
 
   // {{{ Capture response payload
-  // Response payload uses the same encoding; HRDATA occupies the HDATA field
-  // and the response status occupies the HRESP field.
+  // Canonical payload: HRDATA occupies the DATA field; any non-OKAY canonical
+  // RESP maps to an AHB ERROR.
   logic [PAYLOAD_WIDTH-1:0] respPayload;
 
   always_comb
@@ -250,7 +246,7 @@ module niAhbInitiator
   logic respErr;
 
   always_comb
-    respErr = respPayload[pa_noc::AHB_HRESP_LSB];
+    respErr = (respPayload[pa_noc::CANON_RESP_LSB +: 2] != pa_noc::AXI_RESP_OKAY);
 
   logic [31:0] hrdata_q;
 
@@ -264,7 +260,7 @@ module niAhbInitiator
     if (!i_arst_n)
       hrdata_q <= '0;
     else if (respAccept)
-      hrdata_q <= respPayload[pa_noc::AHB_HDATA_LSB +: 32];
+      hrdata_q <= respPayload[pa_noc::CANON_DATA_LSB +: 32];
     else
       hrdata_q <= hrdata_q;
   // }}} Capture response payload
@@ -284,10 +280,10 @@ module niAhbInitiator
         state_d = addrHit ? ST_SEND : ST_ERR1;
       ST_SEND:   // hold until the mesh accepts the request packet
         if (i_niToRouterReady)
-          state_d = hwrite_q ? ST_OKAY : ST_WAIT;
+          state_d = ST_WAIT;
         else
           state_d = ST_SEND;
-      ST_WAIT:   // block until the read response packet returns
+      ST_WAIT:   // block until the response packet returns (read or write)
         if (i_routerToNiValid)
           state_d = respErr ? ST_ERR1 : ST_OKAY;
         else

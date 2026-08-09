@@ -92,6 +92,42 @@ package pa_noc;
   localparam bit AHB_RESP_ERROR = 1'b1;
   // }}} AHB parameters
 
+  // {{{ Canonical (protocol-agnostic) NoC payload
+  // The fabric carries one common transaction payload so that NIs of different
+  // AMBA protocols (AHB-Lite, AXI4-Lite, APB) can interoperate.  The encoding is
+  // identical to AXI4-Lite (the richest common denominator):
+  //   {ADDR[70:39], DATA[38:7], WSTRB[6:3], WRITE[2], RESP[1:0]} = 71 bits.
+  // Each NI translates its native protocol to/from this encoding at its edge.
+  localparam int unsigned CANON_PAYLOAD_WIDTH = AXI_LITE_PAYLOAD_WIDTH;
+  localparam int unsigned CANON_RESP_LSB  = AXI_RESP_LSB;
+  localparam int unsigned CANON_WRITE_LSB = AXI_WRITE_LSB;
+  localparam int unsigned CANON_WSTRB_LSB = AXI_WSTRB_LSB;
+  localparam int unsigned CANON_DATA_LSB  = AXI_DATA_LSB;
+  localparam int unsigned CANON_ADDR_LSB  = AXI_ADDR_LSB;
+
+  // AHB HSIZE <-> byte-strobe translation (aligned single beats only).
+  function automatic logic [3:0] canonHsizeToWstrb
+  ( input logic [2:0] hsize
+  , input logic [1:0] addrLo
+  );
+    case (hsize)
+      3'd0:    canonHsizeToWstrb = 4'b0001 << addrLo;             // byte
+      3'd1:    canonHsizeToWstrb = addrLo[1] ? 4'b1100 : 4'b0011; // halfword
+      default: canonHsizeToWstrb = 4'b1111;                       // word
+    endcase
+  endfunction
+
+  function automatic logic [2:0] canonWstrbToHsize
+  ( input logic [3:0] wstrb
+  );
+    case (wstrb)
+      4'b1111:          canonWstrbToHsize = 3'd2; // word
+      4'b0011, 4'b1100: canonWstrbToHsize = 3'd1; // halfword
+      default:          canonWstrbToHsize = 3'd0; // byte
+    endcase
+  endfunction
+  // }}} Canonical (protocol-agnostic) NoC payload
+
   // Address map entry: maps an address range to a NoC destination node.
   // dstRow/dstCol are stored as 8-bit fields so this struct is independent of
   // GRID_WIDTH; the NI module masks them down to COORD_WIDTH bits at use.

@@ -22,7 +22,7 @@
 module niRouterPort
 #(parameter int unsigned GRID_WIDTH        = 4
 , parameter int unsigned MAX_NI_PER_ROUTER = pa_noc::MAX_NI_PER_ROUTER
-, parameter int unsigned PAYLOAD_WIDTH     = pa_noc::APB_PAYLOAD_WIDTH
+, parameter int unsigned PAYLOAD_WIDTH     = pa_noc::CANON_PAYLOAD_WIDTH
 
 , localparam int unsigned NUM_NI        = (MAX_NI_PER_ROUTER < 1)
                                           ? 1 : MAX_NI_PER_ROUTER

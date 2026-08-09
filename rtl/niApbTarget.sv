@@ -6,10 +6,11 @@
 // slave.
 //
 // WRITE transactions: the payload is unpacked into PADDR/PWDATA/PSTRB/PWRITE,
-// the APB transaction completes, and the packet is consumed.
+// the APB transaction completes, and a response packet carrying the completion
+// status is sent back (round-trip completion, matching the AXI NI).
 //
 // READ transactions: the payload is unpacked, the APB read completes, and a
-// response packet carrying PRDATA (in the PWDATA field position) is sent back
+// response packet carrying PRDATA (in the canonical DATA field) is sent back
 // through the NoC to the initiator.  The response destination is extracted from
 // the source coordinates embedded in the incoming request packet.
 
@@ -25,7 +26,7 @@ module niApbTarget
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
 , localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1) ?
                                           $clog2(MAX_NI_PER_ROUTER) : 0
-, localparam int unsigned PAYLOAD_WIDTH = pa_noc::APB_PAYLOAD_WIDTH
+, localparam int unsigned PAYLOAD_WIDTH = pa_noc::CANON_PAYLOAD_WIDTH
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
                                           + (COORD_WIDTH * 4)
 )
@@ -64,11 +65,8 @@ module niApbTarget
   ty_state state_q, state_d;
 
   // {{{ Unpack APB Payload
-  // APB Payload encoding (same as niApbInitiator):
-  // -------------------------------------------------------
-  // |68            37|36             5|4      |3        0 |
-  // |PADDR (32 bits) |PWDATA (32 bits)|PWRITE |PSTRB(4b)  |
-  // -------------------------------------------------------
+  // Canonical payload (MSB to LSB): {ADDR, DATA, WSTRB, WRITE, RESP}.
+  // WSTRB maps to PSTRB.
   logic [PAYLOAD_WIDTH-1:0] reqPayload;
 
   always_comb
@@ -80,16 +78,16 @@ module niApbTarget
   logic [3:0]  pstrb_d;
 
   always_comb
-    paddr_d  = reqPayload[68:37];
+    paddr_d  = reqPayload[pa_noc::CANON_ADDR_LSB +: 32];
 
   always_comb
-    pwdata_d = reqPayload[36:5];
+    pwdata_d = reqPayload[pa_noc::CANON_DATA_LSB +: 32];
 
   always_comb
-    pwrite_d = reqPayload[4];
+    pwrite_d = reqPayload[pa_noc::CANON_WRITE_LSB];
 
   always_comb
-    pstrb_d  = reqPayload[3:0];
+    pstrb_d  = reqPayload[pa_noc::CANON_WSTRB_LSB +: 4];
   // }}} Unpack APB Payload
 
   // {{{ Extract source coordinates from incoming packet
@@ -203,7 +201,7 @@ module niApbTarget
         state_d = ST_APB_ACCESS;
       ST_APB_ACCESS:
         if (i_pready)
-          state_d = pwrite_q ? ST_IDLE : ST_RESP;
+          state_d = ST_RESP;
         else
           state_d = ST_APB_ACCESS;
       ST_RESP:
@@ -222,6 +220,17 @@ module niApbTarget
       prdata_q <= i_prdata;
     else
       prdata_q <= prdata_q;
+
+  // Latch PSLVERR so it can be mapped into the canonical response RESP field.
+  logic pslverr_q;
+
+  always_ff @(posedge i_clk or negedge i_arst_n)
+    if (!i_arst_n)
+      pslverr_q <= 1'b0;
+    else if (state_q == ST_APB_ACCESS && i_pready)
+      pslverr_q <= i_pslverr;
+    else
+      pslverr_q <= pslverr_q;
   // }}} FSM
 
   // {{{ APB master outputs
@@ -270,8 +279,9 @@ module niApbTarget
         o_routerToNiReady = 1'b0;
   end: gen_no_ni_filter
 
-  // Response packet: PRDATA in the PWDATA field position, same encoding.
-  // Response payload: {PADDR, PRDATA, PWRITE=0, PSTRB=0}
+  // Response packet: PRDATA in the canonical DATA field; PSLVERR mapped to the
+  // canonical RESP field (error -> SLVERR).  Canonical payload:
+  // {ADDR, DATA, WSTRB, WRITE, RESP}; WSTRB/WRITE are unused on a response.
   // Response destination = request's source coords (dynamic routing).
   // Response source = this target's own position (MY_ROW, MY_COL).
   // Response srcNiId = echoed from request (initiator's NI_ID).
@@ -281,7 +291,12 @@ module niApbTarget
   logic [COORD_WIDTH-1:0]   respSrcCol;
 
   always_comb
-    respPayload = {paddr_q, prdata_q, 1'b0, 4'b0000};
+    respPayload = {paddr_q
+                  , prdata_q
+                  , 4'b0000
+                  , 1'b0
+                  , (pslverr_q ? pa_noc::AXI_RESP_SLVERR : pa_noc::AXI_RESP_OKAY)
+                  };
 
   always_comb
     respSrcRow = COORD_WIDTH'(MY_ROW);

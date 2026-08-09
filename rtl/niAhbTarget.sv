@@ -5,12 +5,12 @@
 // towards a local AHB-Lite subordinate.
 
 // WRITE: the payload is unpacked into HADDR/HWDATA/HSIZE/HWRITE, the address and
-// data phases are driven, and the access completes locally.  Writes are posted
-// (no response packet is sent back), matching the APB/AXI NI behaviour.
+// data phases are driven, and a response packet carrying the completion status
+// is sent back through the NoC (round-trip completion, matching the AXI NI).
 
 // READ: the payload is unpacked into HADDR, the address and data phases are
 // driven, HRDATA/HRESP are captured, and a response packet carrying HRDATA (in
-// the HDATA field position) and the response status is sent back through the
+// the canonical DATA field) and the response status is sent back through the
 // NoC to the initiator.
 
 // The response destination is taken from the source coordinates embedded in the
@@ -28,7 +28,7 @@ module niAhbTarget
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
 , localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1) ?
                                           $clog2(MAX_NI_PER_ROUTER) : 0
-, localparam int unsigned PAYLOAD_WIDTH = pa_noc::AHB_PAYLOAD_WIDTH
+, localparam int unsigned PAYLOAD_WIDTH = pa_noc::CANON_PAYLOAD_WIDTH
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
                                           + (COORD_WIDTH * 4)
 )
@@ -75,6 +75,8 @@ module niAhbTarget
     reqAccept = i_routerToNiValid && o_routerToNiReady;
 
   // {{{ Unpack AHB request payload
+  // Canonical payload: {ADDR, DATA, WSTRB, WRITE, RESP}.  HSIZE is reconstructed
+  // from the byte strobe (aligned single beats).
   logic [PAYLOAD_WIDTH-1:0] reqPayload;
 
   always_comb
@@ -86,16 +88,16 @@ module niAhbTarget
   logic [2:0]  hsize_d;
 
   always_comb
-    haddr_d  = reqPayload[pa_noc::AHB_HADDR_LSB +: 32];
+    haddr_d  = reqPayload[pa_noc::CANON_ADDR_LSB +: 32];
 
   always_comb
-    hwdata_d = reqPayload[pa_noc::AHB_HDATA_LSB +: 32];
+    hwdata_d = reqPayload[pa_noc::CANON_DATA_LSB +: 32];
 
   always_comb
-    hwrite_d = reqPayload[pa_noc::AHB_HWRITE_LSB];
+    hwrite_d = reqPayload[pa_noc::CANON_WRITE_LSB];
 
   always_comb
-    hsize_d  = reqPayload[pa_noc::AHB_HSIZE_LSB +: 3];
+    hsize_d  = pa_noc::canonWstrbToHsize(reqPayload[pa_noc::CANON_WSTRB_LSB +: 4]);
   // }}} Unpack AHB request payload
 
   // {{{ Extract source coordinates from incoming packet
@@ -217,7 +219,7 @@ module niAhbTarget
         state_d = i_hready ? ST_DATA : ST_ADDR;
       ST_DATA:  // drive the data phase, hold until the slave completes it
         if (i_hready)
-          state_d = hwrite_q ? ST_IDLE : ST_RESP;
+          state_d = ST_RESP;
         else
           state_d = ST_DATA;
       ST_RESP:  // send response packet, hold until the mesh accepts it
@@ -297,9 +299,9 @@ module niAhbTarget
         o_routerToNiReady = 1'b0;
   end: gen_no_ni_filter
 
-  // Response packet (reads only): HRDATA in the HDATA field position, HRESP in
-  // the HRESP field, HWRITE echoed.  HTRANS/HSIZE fields are unused on a
-  // response and are packed as zero.
+  // Response packet (reads only): HRDATA in the DATA field, HRESP mapped to the
+  // canonical RESP field (ERROR -> SLVERR), HWRITE echoed.  Canonical payload:
+  // {ADDR, DATA, WSTRB, WRITE, RESP}; WSTRB is unused on a response (zero).
   // Response destination = request's source coords (dynamic routing).
   // Response source = this target's own position (MY_ROW, MY_COL).
   logic [PAYLOAD_WIDTH-1:0] respPayload;
@@ -307,7 +309,12 @@ module niAhbTarget
   logic [COORD_WIDTH-1:0]   respSrcCol;
 
   always_comb
-    respPayload = {haddr_q, hrdata_q, 2'b00, 3'b000, hwrite_q, hresp_q};
+    respPayload = {haddr_q
+                  , hrdata_q
+                  , 4'b0000
+                  , hwrite_q
+                  , (hresp_q ? pa_noc::AXI_RESP_SLVERR : pa_noc::AXI_RESP_OKAY)
+                  };
 
   always_comb
     respSrcRow = COORD_WIDTH'(MY_ROW);

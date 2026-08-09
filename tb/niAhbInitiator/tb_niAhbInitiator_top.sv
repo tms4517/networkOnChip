@@ -132,8 +132,25 @@ module tb_niAhbInitiator_top
   always_comb
     o_hreadyout = ahb_hreadyout;
 
+  // Reflect any request that reaches a non-source node straight back to its
+  // origin as an OKAY response, so the initiator's (non-posted) round-trip
+  // write/read completes in this unit testbench.
+  function automatic logic [PACKET_WIDTH-1:0] reflectPkt
+  ( input logic [PACKET_WIDTH-1:0] p
+  );
+    logic [COORD_WIDTH-1:0] dCol, dRow, sCol, sRow;
+    dCol = p[0*COORD_WIDTH +: COORD_WIDTH];
+    dRow = p[1*COORD_WIDTH +: COORD_WIDTH];
+    sCol = p[2*COORD_WIDTH +: COORD_WIDTH];
+    sRow = p[3*COORD_WIDTH +: COORD_WIDTH];
+    reflectPkt = p;                                   // payload unchanged (RESP=OKAY)
+    reflectPkt[0*COORD_WIDTH +: COORD_WIDTH] = sCol;  // new dstCol = old srcCol
+    reflectPkt[1*COORD_WIDTH +: COORD_WIDTH] = sRow;  // new dstRow = old srcRow
+    reflectPkt[2*COORD_WIDTH +: COORD_WIDTH] = dCol;  // new srcCol = old dstCol
+    reflectPkt[3*COORD_WIDTH +: COORD_WIDTH] = dRow;  // new srcRow = old dstRow
+  endfunction
+
   // Wire niAhbInitiator to NOC at (SRC_ROW, SRC_COL)
-  // Tie off all other NI inputs (no other initiators active)
   for (genvar i = 0; i < GRID_WIDTH; i++) begin: gen_ni_row
     for (genvar j = 0; j < GRID_WIDTH; j++) begin: gen_ni_col
       always_comb begin
@@ -142,9 +159,9 @@ module tb_niAhbInitiator_top
           niToRouterValid[i][j] = niToRouterValid_src;
           routerToNiReady[i][j] = routerToNiReady_src;
         end else begin
-          niToRouter[i][j]      = '0;
-          niToRouterValid[i][j] = 1'b0;
-          routerToNiReady[i][j] = 1'b1; // always accept (drain) at idle nodes
+          niToRouter[i][j]      = reflectPkt(routerToNi[i][j]);
+          niToRouterValid[i][j] = routerToNiValid[i][j];
+          routerToNiReady[i][j] = niToRouterReady[i][j];
         end
       end
     end

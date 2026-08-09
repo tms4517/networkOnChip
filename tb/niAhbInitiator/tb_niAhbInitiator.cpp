@@ -68,29 +68,28 @@ static uint32_t extractBits(Vtb_niAhbInitiator_top *dut, int start_bit, int widt
 }
 
 // Decode AHB payload fields directly from packet bits for a given router.
-// Packet layout (79 bits):
+// Packet layout (79 bits) — canonical payload:
 //   [1:0]   = dstCol
 //   [3:2]   = dstRow
 //   [5:4]   = srcCol
 //   [7:6]   = srcRow
-//   [8]     = HRESP
-//   [9]     = HWRITE
-//   [12:10] = HSIZE
-//   [14:13] = HTRANS
-//   [46:15] = HDATA
-//   [78:47] = HADDR
+//   [9:8]   = RESP
+//   [10]    = WRITE
+//   [14:11] = WSTRB
+//   [46:15] = DATA
+//   [78:47] = ADDR
 struct DecodedPayload {
   uint32_t haddr;
   uint32_t hdata;
   bool     hwrite;
-  uint8_t  hsize;
+  uint8_t  wstrb;
 };
 
 static DecodedPayload decodePacketAtRouter(Vtb_niAhbInitiator_top *dut, int row, int col) {
   int pkt_start = routerIndex(row, col) * PACKET_WIDTH;
   DecodedPayload d;
-  d.hwrite = extractBits(dut, pkt_start + 9,  1);
-  d.hsize  = extractBits(dut, pkt_start + 10, 3);
+  d.hwrite = extractBits(dut, pkt_start + 10, 1);
+  d.wstrb  = extractBits(dut, pkt_start + 11, 4);
   d.hdata  = extractBits(dut, pkt_start + 15, 32);
   d.haddr  = extractBits(dut, pkt_start + 47, 32);
   return d;
@@ -122,6 +121,8 @@ int main(int argc, char **argv, char **env) {
   vluint64_t access_start = 0;
   bool waiting_for_dest = false;
   vluint64_t dest_wait_start = 0;
+  bool waiting_complete = false;
+  vluint64_t comp_start = 0;
 
   std::cout << "=== niAhbInitiator Testbench ===" << std::endl;
   std::cout << "Running " << NUM_TESTS << " AHB write transactions" << std::endl;
@@ -165,10 +166,11 @@ int main(int argc, char **argv, char **env) {
         if (dut->o_routerToNiValid & (1U << dst_idx)) {
           DecodedPayload d = decodePacketAtRouter(dut, t.exp_dst_row, t.exp_dst_col);
 
+          uint8_t exp_wstrb = (t.size >= 2) ? 0xF : (t.size == 1 ? 0x3 : 0x1);
           bool pass = (d.haddr == t.addr) &&
                       (d.hdata == t.wdata) &&
                       (d.hwrite == t.write) &&
-                      (d.hsize == t.size);
+                      (d.wstrb == exp_wstrb);
 
           if (pass) {
             std::cout << "  PASS: Test " << current_test
@@ -181,20 +183,44 @@ int main(int argc, char **argv, char **env) {
                       << t.exp_dst_col << ")" << std::endl;
             std::cout << "    Expected: addr=0x" << std::hex << t.addr
                       << " wdata=0x" << t.wdata << " hwrite=" << t.write
-                      << " hsize=0x" << (int)t.size << std::dec << std::endl;
+                      << " wstrb=0x" << (int)exp_wstrb << std::dec << std::endl;
             std::cout << "    Got:      addr=0x" << std::hex << d.haddr
                       << " wdata=0x" << d.hdata << " hwrite=" << d.hwrite
-                      << " hsize=0x" << (int)d.hsize << std::dec << std::endl;
+                      << " wstrb=0x" << (int)d.wstrb << std::dec << std::endl;
           }
 
+          // Packet observed; now wait for the round-trip response to complete
+          // the AHB access before starting the next transaction.
           waiting_for_dest = false;
-          current_test++;
-          ahb_phase = AHB_ADDR;
+          waiting_complete = true;
+          comp_start = posedge_cnt;
         } else if ((posedge_cnt - dest_wait_start) > TIMEOUT_CYCLES) {
           std::cout << "  FAIL: Test " << current_test
                     << " — timeout waiting for packet at destination ("
                     << t.exp_dst_row << "," << t.exp_dst_col << ")"
                     << std::endl;
+          m_trace->close();
+          delete dut;
+          return EXIT_FAILURE;
+        }
+      } else if (waiting_complete) {
+        // Wait for the initiator to complete the AHB data phase (round-trip).
+        if (dut->o_hreadyout) {
+          if (dut->o_hresp) {
+            std::cout << "  FAIL: Test " << current_test
+                      << " — ERROR response on AHB transaction" << std::endl;
+            m_trace->close();
+            delete dut;
+            return EXIT_FAILURE;
+          }
+          dut->i_hsel   = 0;
+          dut->i_htrans = HTRANS_IDLE;
+          waiting_complete = false;
+          current_test++;
+          ahb_phase = AHB_ADDR;
+        } else if ((posedge_cnt - comp_start) > TIMEOUT_CYCLES) {
+          std::cout << "  FAIL: Test " << current_test
+                    << " — AHB HREADYOUT timeout" << std::endl;
           m_trace->close();
           delete dut;
           return EXIT_FAILURE;
@@ -226,28 +252,11 @@ int main(int argc, char **argv, char **env) {
             break;
 
           case AHB_ACCESS:
-            // Wait for HREADYOUT (data phase complete)
-            if (dut->o_hreadyout) {
-              if (dut->o_hresp) {
-                std::cout << "  FAIL: Test " << current_test
-                          << " — ERROR response on AHB transaction" << std::endl;
-                m_trace->close();
-                delete dut;
-                return EXIT_FAILURE;
-              }
-              // Transaction accepted by niAhbInitiator, deassert bus
-              dut->i_hsel   = 0;
-              dut->i_htrans = HTRANS_IDLE;
-              // Now wait for packet at destination
-              waiting_for_dest = true;
-              dest_wait_start = posedge_cnt;
-            } else if ((posedge_cnt - access_start) > TIMEOUT_CYCLES) {
-              std::cout << "  FAIL: Test " << current_test
-                        << " — AHB HREADYOUT timeout" << std::endl;
-              m_trace->close();
-              delete dut;
-              return EXIT_FAILURE;
-            }
+            // Request is now being forwarded into the mesh; poll for its arrival
+            // at the destination router.  The AHB access completes separately
+            // once the round-trip response returns (see waiting_complete).
+            waiting_for_dest = true;
+            dest_wait_start = posedge_cnt;
             break;
 
           default:
