@@ -94,6 +94,16 @@ nocBridgeIntegration1Tb:
 	mkdir -p $(LOG_DIR)/nocBridgeIntegration1Tb && \
 	$(MAKE) -C $(TB_PATH)/nocBridgeIntegration1 | tee $(LOG_DIR)/nocBridgeIntegration1Tb/sim.log
 
+.PHONY: nocBridgeIntegration2Tb
+nocBridgeIntegration2Tb:
+	mkdir -p $(LOG_DIR)/nocBridgeIntegration2Tb && \
+	$(MAKE) -C $(TB_PATH)/nocBridgeIntegration2 | tee $(LOG_DIR)/nocBridgeIntegration2Tb/sim.log
+
+.PHONY: nocBridgeIntegration3Tb
+nocBridgeIntegration3Tb:
+	mkdir -p $(LOG_DIR)/nocBridgeIntegration3Tb && \
+	$(MAKE) -C $(TB_PATH)/nocBridgeIntegration3 | tee $(LOG_DIR)/nocBridgeIntegration3Tb/sim.log
+
 .PHONY: synthesis
 synthesis:
 	mkdir -p $(LOG_DIR)/synthesis/yosys && \
@@ -120,3 +130,5 @@ clean:
 	$(MAKE) -C $(TB_PATH)/nocAxiIntegration2 clean
 	$(MAKE) -C $(TB_PATH)/nocAhbIntegration2 clean
 	$(MAKE) -C $(TB_PATH)/nocBridgeIntegration1 clean
+	$(MAKE) -C $(TB_PATH)/nocBridgeIntegration2 clean
+	$(MAKE) -C $(TB_PATH)/nocBridgeIntegration3 clean
