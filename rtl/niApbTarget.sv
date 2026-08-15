@@ -25,7 +25,6 @@ module niApbTarget
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
 , localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1) ?
                                           $clog2(MAX_NI_PER_ROUTER) : 0
-  // Fabric payload width; native fields occupy the LSBs, MSBs are zero-padded.
 , parameter  int unsigned PAYLOAD_WIDTH = pa_noc::APB_PAYLOAD_WIDTH
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
                                           + (COORD_WIDTH * 4)
