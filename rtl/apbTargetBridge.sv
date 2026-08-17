@@ -1,5 +1,5 @@
 // APB peripheral target wrapper with per-initiator-protocol bridges.
-//
+
 // A target node for an APB peripheral that can be reached by AXI4-Lite, AHB-Lite
 // and APB initiators.  Each incoming NoC packet carries the initiator protocol
 // opcode (top PROTOCOL_WIDTH bits, above the payload). This wrapper decodes the
@@ -19,9 +19,7 @@ module apbTargetBridge
 
 , localparam int unsigned COORD_WIDTH      = $clog2(GRID_WIDTH)
 , localparam int unsigned PROTOCOL_WIDTH   = pa_noc::PROTOCOL_WIDTH
-  // Packet width seen by each per-protocol target NI (no opcode).
 , localparam int unsigned NI_PACKET_WIDTH  = PAYLOAD_WIDTH + (COORD_WIDTH * 4)
-  // Packet width on the fabric (opcode prepended above the payload).
 , localparam int unsigned FAB_PACKET_WIDTH = NI_PACKET_WIDTH + PROTOCOL_WIDTH
 )
 ( input  var logic i_clk
@@ -49,12 +47,23 @@ module apbTargetBridge
 , input  var logic [31:0] i_prdata
 );
 
+  // {{{ Decode opcode
   // Opcode occupies the top PROTOCOL_WIDTH bits; the NI-facing packet is the
   // remaining low bits.
-  pa_noc::ty_PROTOCOL opcode;
+  pa_noc::ty_PROTOCOL opcode, opcodeIsAxi, opcodeIsAhb, opcodeIsApb;
 
   always_comb
     opcode = pa_noc::ty_PROTOCOL'(i_routerToNi[FAB_PACKET_WIDTH-1 -: PROTOCOL_WIDTH]);
+
+  always_comb
+    opcodeIsAxi = (opcode == pa_noc::PROTO_AXI_LITE);
+
+  always_comb
+    opcodeIsAhb = (opcode == pa_noc::PROTO_AHB);
+
+  always_comb
+    opcodeIsApb = (opcode == pa_noc::PROTO_APB);
+  // }}} Decode opcode
 
   logic [NI_PACKET_WIDTH-1:0] niReq;
 
@@ -62,6 +71,12 @@ module apbTargetBridge
     niReq = i_routerToNi[NI_PACKET_WIDTH-1:0];
 
   // {{{ Serialisation (one transaction in flight)
+  // The node serves one transaction at a time.  While idle (!busy_q), an
+  // incoming packet is accepted only if the target NI selected by its opcode is
+  // ready; accepting latches busy_q and the active protocol.  While busy,
+  // o_routerToNiReady is held low so no further packet is accepted (requests are
+  // gated off every target NI), and busy_q clears when the active target returns
+  // to idle -- after it has driven the APB bus and, for reads, sent its response.
   logic               busy_q;
   pa_noc::ty_PROTOCOL activeProto_q;
 
@@ -71,13 +86,13 @@ module apbTargetBridge
   logic axiProtoReady, ahbProtoReady, apbProtoReady, anyProtocolReady;
 
   always_comb
-    axiProtoReady = (opcode == pa_noc::PROTO_AXI_LITE) && axiReady;
+    axiProtoReady = opcodeIsAxi && axiReady;
 
   always_comb
-    ahbProtoReady = (opcode == pa_noc::PROTO_AHB) && ahbReady;
+    ahbProtoReady = opcodeIsAhb && ahbReady;
 
   always_comb
-    apbProtoReady = (opcode == pa_noc::PROTO_APB) && apbReady;
+    apbProtoReady = opcodeIsApb && apbReady;
 
   always_comb
     anyProtocolReady = |{axiProtoReady, ahbProtoReady, apbProtoReady};
@@ -97,28 +112,37 @@ module apbTargetBridge
     activeIdle = &{axiReady, ahbReady, apbReady};
 
   always_ff @(posedge i_clk or negedge i_arst_n)
-    if (!i_arst_n) begin
-      busy_q        <= 1'b0;
+    if (!i_arst_n)
+      busy_q <= 1'b0;
+    else if (accept)
+      busy_q <= 1'b1;
+    else if (busy_q && activeIdle)
+      busy_q <= 1'b0;
+    else
+      busy_q <= busy_q;
+
+  always_ff @(posedge i_clk or negedge i_arst_n)
+    if (!i_arst_n)
       activeProto_q <= pa_noc::PROTO_AXI_LITE;
-    end else if (accept) begin
-      busy_q        <= 1'b1;
+    else if (accept)
       activeProto_q <= opcode;
-    end else if (busy_q && activeIdle) begin
-      busy_q        <= 1'b0;
-    end
+    else if (busy_q && activeIdle)
+      activeProto_q <= pa_noc::PROTO_AXI_LITE;
+    else
+      activeProto_q <= activeProto_q;
   // }}} Serialisation
 
   // Per-target request valid (only during the accept cycle) and response ready.
   logic axiReqValid, ahbReqValid, apbReqValid;
 
   always_comb
-    axiReqValid = i_routerToNiValid && !busy_q && (opcode == pa_noc::PROTO_AXI_LITE);
+    axiReqValid = i_routerToNiValid && !busy_q && opcodeIsAxi;
 
   always_comb
-    ahbReqValid = i_routerToNiValid && !busy_q && (opcode == pa_noc::PROTO_AHB);
+    ahbReqValid = i_routerToNiValid && !busy_q && opcodeIsAhb;
 
   always_comb
-    apbReqValid = i_routerToNiValid && !busy_q && (opcode == pa_noc::PROTO_APB);
+    apbReqValid = i_routerToNiValid && !busy_q && opcodeIsApb;
 
   // {{{ AXI-Lite target + AXI-Lite->APB bridge
   logic [NI_PACKET_WIDTH-1:0] axi_niToRouter;
@@ -214,12 +238,19 @@ module apbTargetBridge
   logic [NI_PACKET_WIDTH-1:0] ahb_niToRouter;
   logic                       ahb_niToRouterValid;
 
-  logic        ahb_hsel;   logic [31:0] ahb_haddr; logic ahb_hwrite;
-  logic [2:0]  ahb_hsize;  logic [1:0]  ahb_htrans; logic [31:0] ahb_hwdata;
-  logic [31:0] ahb_hrdata; logic ahb_hready, ahb_hresp;
+  logic        ahb_hsel;
+  logic [31:0] ahb_haddr;
+  logic ahb_hwrite;
+  logic [2:0]  ahb_hsize;
+  logic [1:0]  ahb_htrans;
+  logic [31:0] ahb_hwdata;
+  logic [31:0] ahb_hrdata;
+  logic ahb_hready, ahb_hresp;
 
-  logic [31:0] ahbBr_paddr, ahbBr_pwdata; logic ahbBr_pwrite;
-  logic [3:0]  ahbBr_pstrb; logic ahbBr_psel, ahbBr_penable;
+  logic [31:0] ahbBr_paddr, ahbBr_pwdata;
+  logic ahbBr_pwrite;
+  logic [3:0]  ahbBr_pstrb;
+  logic ahbBr_psel, ahbBr_penable;
 
   ahbToApbBridge u_ahbBridge
   ( .i_clk    (i_clk)
