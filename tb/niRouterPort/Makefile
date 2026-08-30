@@ -12,7 +12,7 @@ GRID_WIDTH ?= 4
 MAX_NI_PER_ROUTER ?= 3
 MAX_SIM_TIME ?= 4000
 
-RTL_SRCS = $(RTL_PATH)/pa_noc.sv $(RTL_PATH)/niRouterPort.sv
+RTL_SRCS = $(RTL_PATH)/pa_noc.sv $(RTL_PATH)/ni/niRouterPort.sv
 
 VERILATOR_CFLAGS := -CFLAGS -DMAX_SIM_TIME=$(MAX_SIM_TIME)
 

@@ -5,9 +5,9 @@
 TOP_MODULE = tb_nocBridgeIntegration3_top
 RTL_PATH = ../../rtl
 NOC_FILE_LIST = $(RTL_PATH)/noc.f
-EXTRA_RTL = $(RTL_PATH)/ahbToAxiLiteBridge.sv \
-            $(RTL_PATH)/apbToAxiLiteBridge.sv \
-            $(RTL_PATH)/axiTargetBridge.sv
+EXTRA_RTL = $(RTL_PATH)/bridge/ahbToAxiLiteBridge.sv \
+            $(RTL_PATH)/bridge/apbToAxiLiteBridge.sv \
+            $(RTL_PATH)/bridge/axiTargetBridge.sv
 TB_SV = tb_nocBridgeIntegration3_top.sv
 TB_CPP = tb_nocBridgeIntegration3.cpp
 WAVEFORM = waveform_nocBridgeIntegration3.vcd

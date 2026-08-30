@@ -71,7 +71,7 @@ $(WAVEFORM): ./obj_dir/V$(TOP_MODULE)
 	@echo "### BUILDING SIM ###"
 	make -C obj_dir -f V$(TOP_MODULE).mk V$(TOP_MODULE)
 
-$(STAMP): $(RTL_PATH)/$(TOP_MODULE).sv $(TB_CPP)
+$(STAMP): $(RTL_PATH)/fabric/$(TOP_MODULE).sv $(TB_CPP)
 	@echo
 	@echo "### VERILATING (TEST=$(TEST)) ###"
 	verilator -Wall --trace --x-assign unique --x-initial unique -cc \
