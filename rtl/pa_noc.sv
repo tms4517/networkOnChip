@@ -92,6 +92,23 @@ package pa_noc;
   localparam bit AHB_RESP_ERROR = 1'b1;
   // }}} AHB parameters
 
+  // {{{ Initiator protocol opcode
+  // Each packet carries the AMBA protocol its initiator used, so a target node
+  // can steer it to the matching per-protocol target NI (and, when the target
+  // peripheral speaks a different protocol, through the corresponding bridge).
+  // The initiator performs no protocol conversion; conversion happens at the
+  // target.  The opcode is prepended above the payload, so it is transparent to
+  // the routing fabric (coordinates stay at the LSB) and is carried by widening
+  // the fabric PAYLOAD_WIDTH by PROTOCOL_WIDTH.
+  localparam int unsigned PROTOCOL_WIDTH = 2;
+
+  typedef enum logic [PROTOCOL_WIDTH-1:0]
+  { PROTO_AXI_LITE = 2'd0
+  , PROTO_AHB      = 2'd1
+  , PROTO_APB      = 2'd2
+  } ty_PROTOCOL;
+  // }}} Initiator protocol opcode
+
   // Address map entry: maps an address range to a NoC destination node.
   // dstRow/dstCol are stored as 8-bit fields so this struct is independent of
   // GRID_WIDTH; the NI module masks them down to COORD_WIDTH bits at use.

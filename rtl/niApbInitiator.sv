@@ -26,7 +26,7 @@ module niApbInitiator
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
 , localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1) ?
                                           $clog2(MAX_NI_PER_ROUTER) : 0
-, localparam int unsigned PAYLOAD_WIDTH = pa_noc::APB_PAYLOAD_WIDTH
+, parameter int unsigned PAYLOAD_WIDTH = pa_noc::APB_PAYLOAD_WIDTH
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
                                           + (COORD_WIDTH * 4)
 )
@@ -131,7 +131,7 @@ module niApbInitiator
   logic [PAYLOAD_WIDTH-1:0] apbPayload;
 
   always_comb
-    apbPayload = {i_paddr, i_pwdata, i_pwrite, i_pstrb};
+    apbPayload = PAYLOAD_WIDTH'({i_paddr, i_pwdata, i_pwrite, i_pstrb});
 
   // Full NoC packet layout (MSB to LSB):
   // {Payload, srcNiId, srcRow, srcCol, dstNiId, dstRow, dstCol}
