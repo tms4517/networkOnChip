@@ -54,10 +54,24 @@ module axiTargetBridge
 , output var logic        o_rready
 );
 
+  // {{{ Decode opcode
+  // Opcode occupies the top PROTOCOL_WIDTH bits; the NI-facing packet is the
+  // remaining low bits.
   pa_noc::ty_PROTOCOL opcode;
+  logic               opcodeIsAxi, opcodeIsAhb, opcodeIsApb;
 
   always_comb
     opcode = pa_noc::ty_PROTOCOL'(i_routerToNi[FAB_PACKET_WIDTH-1 -: PROTOCOL_WIDTH]);
+
+  always_comb
+    opcodeIsAxi = (opcode == pa_noc::PROTO_AXI_LITE);
+
+  always_comb
+    opcodeIsAhb = (opcode == pa_noc::PROTO_AHB);
+
+  always_comb
+    opcodeIsApb = (opcode == pa_noc::PROTO_APB);
+  // }}} Decode opcode
 
   logic [NI_PACKET_WIDTH-1:0] niReq;
 
@@ -65,75 +79,141 @@ module axiTargetBridge
     niReq = i_routerToNi[NI_PACKET_WIDTH-1:0];
 
   // {{{ Serialisation (one transaction in flight)
+  // The node serves one transaction at a time.  While idle (!busy_q), an
+  // incoming packet is accepted only if the target NI selected by its opcode is
+  // ready; accepting latches busy_q and the active protocol. While busy,
+  // o_routerToNiReady is held low so no further packet is accepted (requests are
+  // gated off every target NI), and busy_q clears when the active target returns
+  // to idle -- after it has driven the AXI bus and, for reads, sent its response.
   logic               busy_q;
   pa_noc::ty_PROTOCOL activeProto_q;
 
+  // Per-protocol readiness: the addressed target NI matches the opcode and is
+  // idle; exactly one is asserted (or none) at a time.
   logic axiReady, ahbReady, apbReady;
-  logic accept;
+  logic axiProtoReady, ahbProtoReady, apbProtoReady, anyProtocolReady;
 
   always_comb
-    o_routerToNiReady = !busy_q
-                      && ( (opcode == pa_noc::PROTO_AXI_LITE) ? axiReady
-                         : (opcode == pa_noc::PROTO_AHB)      ? ahbReady
-                         : (opcode == pa_noc::PROTO_APB)      ? apbReady
-                         : 1'b0);
+    axiProtoReady = opcodeIsAxi && axiReady;
+
+  always_comb
+    ahbProtoReady = opcodeIsAhb && ahbReady;
+
+  always_comb
+    apbProtoReady = opcodeIsApb && apbReady;
+
+  always_comb
+    anyProtocolReady = |{axiProtoReady, ahbProtoReady, apbProtoReady};
+
+  always_comb
+    o_routerToNiReady = !busy_q && anyProtocolReady;
+
+  logic accept;
 
   always_comb
     accept = i_routerToNiValid && o_routerToNiReady;
 
+  // Only the active target ever leaves idle, so all-idle == active-target-idle.
   logic activeIdle;
 
   always_comb
-    activeIdle = (activeProto_q == pa_noc::PROTO_AXI_LITE) ? axiReady
-               : (activeProto_q == pa_noc::PROTO_AHB)      ? ahbReady
-               : apbReady;
+    activeIdle = &{axiReady, ahbReady, apbReady};
+
+  logic               busy_d;
+  pa_noc::ty_PROTOCOL activeProto_d;
+
+  always_comb
+    if (accept)
+      busy_d = 1'b1;
+    else if (busy_q && activeIdle)
+      busy_d = 1'b0;
+    else
+      busy_d = busy_q;
+
+  always_comb
+    if (accept)
+      activeProto_d = opcode;
+    else if (busy_q && activeIdle)
+      activeProto_d = pa_noc::PROTO_AXI_LITE;
+    else
+      activeProto_d = activeProto_q;
 
   always_ff @(posedge i_clk or negedge i_arst_n)
-    if (!i_arst_n) begin
-      busy_q        <= 1'b0;
+    if (!i_arst_n)
+      busy_q <= 1'b0;
+    else
+      busy_q <= busy_d;
+
+  always_ff @(posedge i_clk or negedge i_arst_n)
+    if (!i_arst_n)
       activeProto_q <= pa_noc::PROTO_AXI_LITE;
-    end else if (accept) begin
-      busy_q        <= 1'b1;
-      activeProto_q <= opcode;
-    end else if (busy_q && activeIdle) begin
-      busy_q        <= 1'b0;
-    end
+    else
+      activeProto_q <= activeProto_d;
   // }}} Serialisation
 
+  // Per-target request valid (only during the accept cycle) and response ready.
   logic axiReqValid, ahbReqValid, apbReqValid;
 
   always_comb
-    axiReqValid = i_routerToNiValid && !busy_q && (opcode == pa_noc::PROTO_AXI_LITE);
+    axiReqValid = i_routerToNiValid && !busy_q && opcodeIsAxi;
 
   always_comb
-    ahbReqValid = i_routerToNiValid && !busy_q && (opcode == pa_noc::PROTO_AHB);
+    ahbReqValid = i_routerToNiValid && !busy_q && opcodeIsAhb;
 
   always_comb
-    apbReqValid = i_routerToNiValid && !busy_q && (opcode == pa_noc::PROTO_APB);
+    apbReqValid = i_routerToNiValid && !busy_q && opcodeIsApb;
 
   // {{{ AXI-Lite target (native, no bridge)
   logic [NI_PACKET_WIDTH-1:0] axi_niToRouter;
   logic                       axi_niToRouterValid;
 
-  logic [31:0] axiT_awaddr; logic axiT_awvalid;
-  logic [31:0] axiT_wdata;  logic [3:0] axiT_wstrb; logic axiT_wvalid;
-  logic        axiT_bready;
-  logic [31:0] axiT_araddr; logic axiT_arvalid;
-  logic        axiT_rready;
+  // Response-ready is routed to this target NI only while it is the active
+  // protocol, so only the active target drives the shared response channel.
+  logic axi_niToRouterReady;
+
+  always_comb
+    axi_niToRouterReady = &{busy_q
+                          , (activeProto_q == pa_noc::PROTO_AXI_LITE)
+                          , i_niToRouterReady
+                          };
+
+  logic [31:0] axiT_awaddr, axiT_wdata, axiT_araddr;
+  logic [3:0]  axiT_wstrb;
+  logic        axiT_awvalid, axiT_wvalid, axiT_bready, axiT_arvalid, axiT_rready;
 
   niAxiLiteTarget
-  #(.GRID_WIDTH (GRID_WIDTH), .MY_ROW (MY_ROW), .MY_COL (MY_COL)
+  #(.GRID_WIDTH    (GRID_WIDTH)
+  , .MY_ROW        (MY_ROW)
+  , .MY_COL        (MY_COL)
   , .PAYLOAD_WIDTH (PAYLOAD_WIDTH))
   u_axiTarget
-  ( .i_clk (i_clk), .i_arst_n (i_arst_n)
-  , .o_awaddr (axiT_awaddr), .o_awvalid (axiT_awvalid), .i_awready (i_awready)
-  , .o_wdata (axiT_wdata), .o_wstrb (axiT_wstrb), .o_wvalid (axiT_wvalid), .i_wready (i_wready)
-  , .i_bresp (i_bresp), .i_bvalid (i_bvalid), .o_bready (axiT_bready)
-  , .o_araddr (axiT_araddr), .o_arvalid (axiT_arvalid), .i_arready (i_arready)
-  , .i_rdata (i_rdata), .i_rresp (i_rresp), .i_rvalid (i_rvalid), .o_rready (axiT_rready)
-  , .i_routerToNi (niReq), .i_routerToNiValid (axiReqValid), .o_routerToNiReady (axiReady)
-  , .o_niToRouter (axi_niToRouter), .o_niToRouterValid (axi_niToRouterValid)
-  , .i_niToRouterReady (busy_q && (activeProto_q == pa_noc::PROTO_AXI_LITE) && i_niToRouterReady)
+  ( .i_clk    (i_clk)
+  , .i_arst_n (i_arst_n)
+
+  , .o_awaddr  (axiT_awaddr)
+  , .o_awvalid (axiT_awvalid)
+  , .i_awready (i_awready)
+  , .o_wdata   (axiT_wdata)
+  , .o_wstrb   (axiT_wstrb)
+  , .o_wvalid  (axiT_wvalid)
+  , .i_wready  (i_wready)
+  , .i_bresp   (i_bresp)
+  , .i_bvalid  (i_bvalid)
+  , .o_bready  (axiT_bready)
+  , .o_araddr  (axiT_araddr)
+  , .o_arvalid (axiT_arvalid)
+  , .i_arready (i_arready)
+  , .i_rdata   (i_rdata)
+  , .i_rresp   (i_rresp)
+  , .i_rvalid  (i_rvalid)
+  , .o_rready  (axiT_rready)
+
+  , .i_routerToNi      (niReq)
+  , .i_routerToNiValid (axiReqValid)
+  , .o_routerToNiReady (axiReady)
+  , .o_niToRouter      (axi_niToRouter)
+  , .o_niToRouterValid (axi_niToRouterValid)
+  , .i_niToRouterReady (axi_niToRouterReady)
   );
   // }}} AXI-Lite target (native, no bridge)
 
@@ -141,39 +221,82 @@ module axiTargetBridge
   logic [NI_PACKET_WIDTH-1:0] ahb_niToRouter;
   logic                       ahb_niToRouterValid;
 
-  logic        ahb_hsel;  logic [31:0] ahb_haddr; logic ahb_hwrite;
-  logic [2:0]  ahb_hsize; logic [1:0]  ahb_htrans; logic [31:0] ahb_hwdata;
-  logic [31:0] ahb_hrdata; logic ahb_hready, ahb_hresp;
+  // Response-ready is routed to this target NI only while it is the active
+  // protocol, so only the active target drives the shared response channel.
+  logic ahb_niToRouterReady;
 
-  logic [31:0] ahbBr_awaddr; logic ahbBr_awvalid;
-  logic [31:0] ahbBr_wdata;  logic [3:0] ahbBr_wstrb; logic ahbBr_wvalid;
-  logic        ahbBr_bready;
-  logic [31:0] ahbBr_araddr; logic ahbBr_arvalid;
-  logic        ahbBr_rready;
+  always_comb
+    ahb_niToRouterReady = &{busy_q
+                          , (activeProto_q == pa_noc::PROTO_AHB)
+                          , i_niToRouterReady
+                          };
+
+  logic [31:0] ahb_haddr, ahb_hwdata, ahb_hrdata;
+  logic [2:0]  ahb_hsize;
+  logic [1:0]  ahb_htrans;
+  logic        ahb_hsel, ahb_hwrite, ahb_hready, ahb_hresp;
+
+  logic [31:0] ahbBr_awaddr, ahbBr_wdata, ahbBr_araddr;
+  logic [3:0]  ahbBr_wstrb;
+  logic        ahbBr_awvalid, ahbBr_wvalid, ahbBr_bready, ahbBr_arvalid, ahbBr_rready;
 
   niAhbTarget
-  #(.GRID_WIDTH (GRID_WIDTH), .MY_ROW (MY_ROW), .MY_COL (MY_COL)
+  #(.GRID_WIDTH    (GRID_WIDTH)
+  , .MY_ROW        (MY_ROW)
+  , .MY_COL        (MY_COL)
   , .PAYLOAD_WIDTH (PAYLOAD_WIDTH))
   u_ahbTarget
-  ( .i_clk (i_clk), .i_arst_n (i_arst_n)
-  , .o_hsel (ahb_hsel), .o_haddr (ahb_haddr), .o_hwrite (ahb_hwrite)
-  , .o_hsize (ahb_hsize), .o_htrans (ahb_htrans), .o_hwdata (ahb_hwdata)
-  , .i_hrdata (ahb_hrdata), .i_hready (ahb_hready), .i_hresp (ahb_hresp)
-  , .i_routerToNi (niReq), .i_routerToNiValid (ahbReqValid), .o_routerToNiReady (ahbReady)
-  , .o_niToRouter (ahb_niToRouter), .o_niToRouterValid (ahb_niToRouterValid)
-  , .i_niToRouterReady (busy_q && (activeProto_q == pa_noc::PROTO_AHB) && i_niToRouterReady)
+  ( .i_clk    (i_clk)
+  , .i_arst_n (i_arst_n)
+
+  , .o_hsel   (ahb_hsel)
+  , .o_haddr  (ahb_haddr)
+  , .o_hwrite (ahb_hwrite)
+  , .o_hsize  (ahb_hsize)
+  , .o_htrans (ahb_htrans)
+  , .o_hwdata (ahb_hwdata)
+  , .i_hrdata (ahb_hrdata)
+  , .i_hready (ahb_hready)
+  , .i_hresp  (ahb_hresp)
+
+  , .i_routerToNi      (niReq)
+  , .i_routerToNiValid (ahbReqValid)
+  , .o_routerToNiReady (ahbReady)
+  , .o_niToRouter      (ahb_niToRouter)
+  , .o_niToRouterValid (ahb_niToRouterValid)
+  , .i_niToRouterReady (ahb_niToRouterReady)
   );
 
   ahbToAxiLiteBridge u_ahbBridge
-  ( .i_clk (i_clk), .i_arst_n (i_arst_n)
-  , .i_hsel (ahb_hsel), .i_haddr (ahb_haddr), .i_hwrite (ahb_hwrite)
-  , .i_hsize (ahb_hsize), .i_htrans (ahb_htrans), .i_hwdata (ahb_hwdata)
-  , .o_hreadyout (ahb_hready), .o_hresp (ahb_hresp), .o_hrdata (ahb_hrdata)
-  , .o_awaddr (ahbBr_awaddr), .o_awvalid (ahbBr_awvalid), .i_awready (i_awready)
-  , .o_wdata (ahbBr_wdata), .o_wstrb (ahbBr_wstrb), .o_wvalid (ahbBr_wvalid), .i_wready (i_wready)
-  , .i_bresp (i_bresp), .i_bvalid (i_bvalid), .o_bready (ahbBr_bready)
-  , .o_araddr (ahbBr_araddr), .o_arvalid (ahbBr_arvalid), .i_arready (i_arready)
-  , .i_rdata (i_rdata), .i_rresp (i_rresp), .i_rvalid (i_rvalid), .o_rready (ahbBr_rready)
+  ( .i_clk    (i_clk)
+  , .i_arst_n (i_arst_n)
+
+  , .i_hsel      (ahb_hsel)
+  , .i_haddr     (ahb_haddr)
+  , .i_hwrite    (ahb_hwrite)
+  , .i_hsize     (ahb_hsize)
+  , .i_htrans    (ahb_htrans)
+  , .i_hwdata    (ahb_hwdata)
+  , .o_hreadyout (ahb_hready)
+  , .o_hresp     (ahb_hresp)
+  , .o_hrdata    (ahb_hrdata)
+  , .o_awaddr    (ahbBr_awaddr)
+  , .o_awvalid   (ahbBr_awvalid)
+  , .i_awready   (i_awready)
+  , .o_wdata     (ahbBr_wdata)
+  , .o_wstrb     (ahbBr_wstrb)
+  , .o_wvalid    (ahbBr_wvalid)
+  , .i_wready    (i_wready)
+  , .i_bresp     (i_bresp)
+  , .i_bvalid    (i_bvalid)
+  , .o_bready    (ahbBr_bready)
+  , .o_araddr    (ahbBr_araddr)
+  , .o_arvalid   (ahbBr_arvalid)
+  , .i_arready   (i_arready)
+  , .i_rdata     (i_rdata)
+  , .i_rresp     (i_rresp)
+  , .i_rvalid    (i_rvalid)
+  , .o_rready    (ahbBr_rready)
   );
   // }}} AHB-Lite target + bridge
 
@@ -181,39 +304,81 @@ module axiTargetBridge
   logic [NI_PACKET_WIDTH-1:0] apb_niToRouter;
   logic                       apb_niToRouterValid;
 
-  logic [31:0] apb_paddr, apb_pwdata; logic apb_pwrite;
-  logic [3:0]  apb_pstrb; logic apb_psel, apb_penable;
-  logic        apb_pready, apb_pslverr; logic [31:0] apb_prdata;
+  // Response-ready is routed to this target NI only while it is the active
+  // protocol, so only the active target drives the shared response channel.
+  logic apb_niToRouterReady;
 
-  logic [31:0] apbBr_awaddr; logic apbBr_awvalid;
-  logic [31:0] apbBr_wdata;  logic [3:0] apbBr_wstrb; logic apbBr_wvalid;
-  logic        apbBr_bready;
-  logic [31:0] apbBr_araddr; logic apbBr_arvalid;
-  logic        apbBr_rready;
+  always_comb
+    apb_niToRouterReady = &{busy_q
+                          , (activeProto_q == pa_noc::PROTO_APB)
+                          , i_niToRouterReady
+                          };
+
+  logic [31:0] apb_paddr, apb_pwdata, apb_prdata;
+  logic [3:0]  apb_pstrb;
+  logic        apb_pwrite, apb_psel, apb_penable, apb_pready, apb_pslverr;
+
+  logic [31:0] apbBr_awaddr, apbBr_wdata, apbBr_araddr;
+  logic [3:0]  apbBr_wstrb;
+  logic        apbBr_awvalid, apbBr_wvalid, apbBr_bready, apbBr_arvalid, apbBr_rready;
 
   niApbTarget
-  #(.GRID_WIDTH (GRID_WIDTH), .MY_ROW (MY_ROW), .MY_COL (MY_COL)
+  #(.GRID_WIDTH    (GRID_WIDTH)
+  , .MY_ROW        (MY_ROW)
+  , .MY_COL        (MY_COL)
   , .PAYLOAD_WIDTH (PAYLOAD_WIDTH))
   u_apbTarget
-  ( .i_clk (i_clk), .i_arst_n (i_arst_n)
-  , .o_paddr (apb_paddr), .o_pwdata (apb_pwdata), .o_pwrite (apb_pwrite)
-  , .o_pstrb (apb_pstrb), .o_psel (apb_psel), .o_penable (apb_penable)
-  , .i_pready (apb_pready), .i_pslverr (apb_pslverr), .i_prdata (apb_prdata)
-  , .i_routerToNi (niReq), .i_routerToNiValid (apbReqValid), .o_routerToNiReady (apbReady)
-  , .o_niToRouter (apb_niToRouter), .o_niToRouterValid (apb_niToRouterValid)
-  , .i_niToRouterReady (busy_q && (activeProto_q == pa_noc::PROTO_APB) && i_niToRouterReady)
+  ( .i_clk    (i_clk)
+  , .i_arst_n (i_arst_n)
+
+  , .o_paddr   (apb_paddr)
+  , .o_pwdata  (apb_pwdata)
+  , .o_pwrite  (apb_pwrite)
+  , .o_pstrb   (apb_pstrb)
+  , .o_psel    (apb_psel)
+  , .o_penable (apb_penable)
+  , .i_pready  (apb_pready)
+  , .i_pslverr (apb_pslverr)
+  , .i_prdata  (apb_prdata)
+
+  , .i_routerToNi      (niReq)
+  , .i_routerToNiValid (apbReqValid)
+  , .o_routerToNiReady (apbReady)
+  , .o_niToRouter      (apb_niToRouter)
+  , .o_niToRouterValid (apb_niToRouterValid)
+  , .i_niToRouterReady (apb_niToRouterReady)
   );
 
   apbToAxiLiteBridge u_apbBridge
-  ( .i_clk (i_clk), .i_arst_n (i_arst_n)
-  , .i_paddr (apb_paddr), .i_pwdata (apb_pwdata), .i_pwrite (apb_pwrite)
-  , .i_pstrb (apb_pstrb), .i_psel (apb_psel), .i_penable (apb_penable)
-  , .o_pready (apb_pready), .o_pslverr (apb_pslverr), .o_prdata (apb_prdata)
-  , .o_awaddr (apbBr_awaddr), .o_awvalid (apbBr_awvalid), .i_awready (i_awready)
-  , .o_wdata (apbBr_wdata), .o_wstrb (apbBr_wstrb), .o_wvalid (apbBr_wvalid), .i_wready (i_wready)
-  , .i_bresp (i_bresp), .i_bvalid (i_bvalid), .o_bready (apbBr_bready)
-  , .o_araddr (apbBr_araddr), .o_arvalid (apbBr_arvalid), .i_arready (i_arready)
-  , .i_rdata (i_rdata), .i_rresp (i_rresp), .i_rvalid (i_rvalid), .o_rready (apbBr_rready)
+  ( .i_clk    (i_clk)
+  , .i_arst_n (i_arst_n)
+
+  , .i_paddr   (apb_paddr)
+  , .i_pwdata  (apb_pwdata)
+  , .i_pwrite  (apb_pwrite)
+  , .i_pstrb   (apb_pstrb)
+  , .i_psel    (apb_psel)
+  , .i_penable (apb_penable)
+  , .o_pready  (apb_pready)
+  , .o_pslverr (apb_pslverr)
+  , .o_prdata  (apb_prdata)
+  , .o_awaddr  (apbBr_awaddr)
+  , .o_awvalid (apbBr_awvalid)
+  , .i_awready (i_awready)
+  , .o_wdata   (apbBr_wdata)
+  , .o_wstrb   (apbBr_wstrb)
+  , .o_wvalid  (apbBr_wvalid)
+  , .i_wready  (i_wready)
+  , .i_bresp   (i_bresp)
+  , .i_bvalid  (i_bvalid)
+  , .o_bready  (apbBr_bready)
+  , .o_araddr  (apbBr_araddr)
+  , .o_arvalid (apbBr_arvalid)
+  , .i_arready (i_arready)
+  , .i_rdata   (i_rdata)
+  , .i_rresp   (i_rresp)
+  , .i_rvalid  (i_rvalid)
+  , .o_rready  (apbBr_rready)
   );
   // }}} APB target + bridge
 
@@ -234,22 +399,34 @@ module axiTargetBridge
   // {{{ AXI peripheral bus mux (active source only)
   always_comb
     if (activeProto_q == pa_noc::PROTO_AXI_LITE) begin
-      o_awaddr  = axiT_awaddr;  o_awvalid = axiT_awvalid;
-      o_wdata   = axiT_wdata;   o_wstrb   = axiT_wstrb;  o_wvalid = axiT_wvalid;
+      o_awaddr  = axiT_awaddr;
+      o_awvalid = axiT_awvalid;
+      o_wdata   = axiT_wdata;
+      o_wstrb   = axiT_wstrb;
+      o_wvalid = axiT_wvalid;
       o_bready  = axiT_bready;
-      o_araddr  = axiT_araddr;  o_arvalid = axiT_arvalid;
+      o_araddr  = axiT_araddr;
+      o_arvalid = axiT_arvalid;
       o_rready  = axiT_rready;
     end else if (activeProto_q == pa_noc::PROTO_AHB) begin
-      o_awaddr  = ahbBr_awaddr; o_awvalid = ahbBr_awvalid;
-      o_wdata   = ahbBr_wdata;  o_wstrb   = ahbBr_wstrb; o_wvalid = ahbBr_wvalid;
+      o_awaddr  = ahbBr_awaddr;
+      o_awvalid = ahbBr_awvalid;
+      o_wdata   = ahbBr_wdata;
+      o_wstrb   = ahbBr_wstrb;
+      o_wvalid = ahbBr_wvalid;
       o_bready  = ahbBr_bready;
-      o_araddr  = ahbBr_araddr; o_arvalid = ahbBr_arvalid;
+      o_araddr  = ahbBr_araddr;
+      o_arvalid = ahbBr_arvalid;
       o_rready  = ahbBr_rready;
     end else begin
-      o_awaddr  = apbBr_awaddr; o_awvalid = apbBr_awvalid;
-      o_wdata   = apbBr_wdata;  o_wstrb   = apbBr_wstrb; o_wvalid = apbBr_wvalid;
+      o_awaddr  = apbBr_awaddr;
+      o_awvalid = apbBr_awvalid;
+      o_wdata   = apbBr_wdata;
+      o_wstrb   = apbBr_wstrb;
+      o_wvalid = apbBr_wvalid;
       o_bready  = apbBr_bready;
-      o_araddr  = apbBr_araddr; o_arvalid = apbBr_arvalid;
+      o_araddr  = apbBr_araddr;
+      o_arvalid = apbBr_arvalid;
       o_rready  = apbBr_rready;
     end
   // }}} AXI peripheral bus mux
