@@ -77,6 +77,9 @@ module axiLiteToAhbBridge
     end else if (acceptRead) begin
       addr_q  <= i_araddr;
       write_q <= 1'b0;
+    end else begin
+      addr_q  <= addr_q;
+      write_q <= write_q;
     end
 
   always_ff @(posedge i_clk or negedge i_arst_n)
@@ -84,6 +87,8 @@ module axiLiteToAhbBridge
       wdata_q <= '0;
     else if (state_q == ST_WDATA && i_wvalid)
       wdata_q <= i_wdata;
+    else
+      wdata_q <= wdata_q;
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n) begin
@@ -92,6 +97,9 @@ module axiLiteToAhbBridge
     end else if (state_q == ST_DATA && i_hready) begin
       rdata_q <= i_hrdata;
       hresp_q <= i_hresp;
+    end else begin
+      rdata_q <= rdata_q;
+      hresp_q <= hresp_q;
     end
   // }}} Latched fields
 

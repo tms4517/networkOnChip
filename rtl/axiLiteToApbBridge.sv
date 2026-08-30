@@ -1,8 +1,8 @@
 // AXI4-Lite to APB bridge (single-beat, single outstanding).
 //
 // Presents an AXI4-Lite SUBORDINATE interface (driven by a niAxiLiteTarget
-// manager) and an APB MANAGER interface (driving a local APB peripheral).  Each
-// AXI single access is translated into one APB SETUP+ACCESS transaction.  AW
+// manager) and an APB MANAGER interface (driving a local APB peripheral). Each
+// AXI single access is translated into one APB SETUP+ACCESS transaction. AW
 // and W are accepted sequentially (matching niAxiLiteTarget), WSTRB maps to
 // PSTRB and PSLVERR to BRESP/RRESP.
 
@@ -85,6 +85,9 @@ module axiLiteToApbBridge
     end else if (acceptRead) begin
       addr_q  <= i_araddr;
       write_q <= 1'b0;
+    end else begin
+      addr_q  <= addr_q;
+      write_q <= write_q;
     end
 
   always_ff @(posedge i_clk or negedge i_arst_n)
@@ -94,6 +97,9 @@ module axiLiteToApbBridge
     end else if (state_q == ST_WDATA && i_wvalid) begin
       wdata_q <= i_wdata;
       wstrb_q <= i_wstrb;
+    end else begin
+      wdata_q <= wdata_q;
+      wstrb_q <= wstrb_q;
     end
 
   always_ff @(posedge i_clk or negedge i_arst_n)
@@ -103,6 +109,9 @@ module axiLiteToApbBridge
     end else if (state_q == ST_ACCESS && i_pready) begin
       prdata_q <= i_prdata;
       resp_q   <= i_pslverr ? pa_noc::AXI_RESP_SLVERR : pa_noc::AXI_RESP_OKAY;
+    end else begin
+      prdata_q <= prdata_q;
+      resp_q   <= resp_q;
     end
   // }}} Latched request fields
 

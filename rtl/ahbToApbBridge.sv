@@ -78,6 +78,10 @@ module ahbToApbBridge
       haddr_q  <= i_haddr;
       hwrite_q <= i_hwrite;
       hsize_q  <= i_hsize;
+    end else begin
+      haddr_q  <= haddr_q;
+      hwrite_q <= hwrite_q;
+      hsize_q  <= hsize_q;
     end
 
   // HWDATA is valid in the AHB data phase (the cycle the FSM sits in ST_SETUP).
@@ -86,6 +90,8 @@ module ahbToApbBridge
       hwdata_q <= '0;
     else if (state_q == ST_SETUP)
       hwdata_q <= i_hwdata;
+    else
+      hwdata_q <= hwdata_q;
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n) begin
@@ -94,6 +100,9 @@ module ahbToApbBridge
     end else if (state_q == ST_ACCESS && i_pready) begin
       prdata_q <= i_prdata;
       hresp_q  <= i_pslverr;
+    end else begin
+      prdata_q <= prdata_q;
+      hresp_q  <= hresp_q;
     end
   // }}} Latched request fields
 

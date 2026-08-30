@@ -89,6 +89,10 @@ module ahbToAxiLiteBridge
       haddr_q  <= i_haddr;
       hwrite_q <= i_hwrite;
       hsize_q  <= i_hsize;
+    end else begin
+      haddr_q  <= haddr_q;
+      hwrite_q <= hwrite_q;
+      hsize_q  <= hsize_q;
     end
 
   always_ff @(posedge i_clk or negedge i_arst_n)
@@ -96,6 +100,8 @@ module ahbToAxiLiteBridge
       hwdata_q <= '0;
     else if (state_q == ST_SETUP)
       hwdata_q <= i_hwdata;
+    else
+      hwdata_q <= hwdata_q;
 
   always_ff @(posedge i_clk or negedge i_arst_n)
     if (!i_arst_n) begin
@@ -106,6 +112,9 @@ module ahbToAxiLiteBridge
     end else if (state_q == ST_R && i_rvalid) begin
       rdata_q <= i_rdata;
       resp_q  <= i_rresp;
+    end else begin
+      rdata_q <= rdata_q;
+      resp_q  <= resp_q;
     end
   // }}} Latched fields
 

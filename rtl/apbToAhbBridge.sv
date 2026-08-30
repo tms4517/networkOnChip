@@ -65,6 +65,10 @@ module apbToAhbBridge
       paddr_q  <= i_paddr;
       pwdata_q <= i_pwdata;
       pwrite_q <= i_pwrite;
+    end else begin
+      paddr_q  <= paddr_q;
+      pwdata_q <= pwdata_q;
+      pwrite_q <= pwrite_q;
     end
 
   always_ff @(posedge i_clk or negedge i_arst_n)
@@ -74,6 +78,9 @@ module apbToAhbBridge
     end else if (state_q == ST_DATA && i_hready) begin
       rdata_q <= i_hrdata;
       hresp_q <= i_hresp;
+    end else begin
+      rdata_q <= rdata_q;
+      hresp_q <= hresp_q;
     end
   // }}} Latched fields
 
