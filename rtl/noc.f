@@ -12,3 +12,5 @@ fabric/router.sv
 fabric/arbiter.sv
 fabric/roundRobinArbiter.sv
 fabric/synchronousFifo.sv
+fabric/asyncFifo.sv
+fabric/cdcNiBridge.sv
