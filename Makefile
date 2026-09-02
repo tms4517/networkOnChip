@@ -104,6 +104,21 @@ nocBridgeIntegration3Tb:
 	mkdir -p $(LOG_DIR)/nocBridgeIntegration3Tb && \
 	$(MAKE) -C $(TB_PATH)/nocBridgeIntegration3 | tee $(LOG_DIR)/nocBridgeIntegration3Tb/sim.log
 
+.PHONY: asyncFifoTb
+asyncFifoTb:
+	mkdir -p $(LOG_DIR)/asyncFifoTb && \
+	$(MAKE) -C $(TB_PATH)/asyncFifo | tee $(LOG_DIR)/asyncFifoTb/sim.log
+
+.PHONY: cdcNiBridgeTb
+cdcNiBridgeTb:
+	mkdir -p $(LOG_DIR)/cdcNiBridgeTb && \
+	$(MAKE) -C $(TB_PATH)/cdcNiBridge | tee $(LOG_DIR)/cdcNiBridgeTb/sim.log
+
+.PHONY: nocAsyncIntegration1Tb
+nocAsyncIntegration1Tb:
+	mkdir -p $(LOG_DIR)/nocAsyncIntegration1Tb && \
+	$(MAKE) -C $(TB_PATH)/nocAsyncIntegration1 | tee $(LOG_DIR)/nocAsyncIntegration1Tb/sim.log
+
 .PHONY: synthesis
 synthesis:
 	mkdir -p $(LOG_DIR)/synthesis/yosys && \
@@ -132,3 +147,6 @@ clean:
 	$(MAKE) -C $(TB_PATH)/nocBridgeIntegration1 clean
 	$(MAKE) -C $(TB_PATH)/nocBridgeIntegration2 clean
 	$(MAKE) -C $(TB_PATH)/nocBridgeIntegration3 clean
+	$(MAKE) -C $(TB_PATH)/asyncFifo clean
+	$(MAKE) -C $(TB_PATH)/cdcNiBridge clean
+	$(MAKE) -C $(TB_PATH)/nocAsyncIntegration1 clean
