@@ -1,3 +1,4 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // Network Interface — APB Target
 
 // This module sits between a NoC router NI port and a local APB target (slave).
@@ -119,7 +120,7 @@ module niApbTarget
       reqSrcNiId_d = i_routerToNi[(4*COORD_WIDTH + 2*NI_ID_WIDTH)-1
                                     -: NI_ID_WIDTH];
 
-    always_ff @(posedge i_clk or negedge i_arst_n)
+    always_ff @(posedge i_clk, negedge i_arst_n)
       if (!i_arst_n)
         reqSrcNiId_q <= '0;
       else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
@@ -138,7 +139,7 @@ module niApbTarget
   logic [COORD_WIDTH-1:0] reqSrcRow_q;
   logic [COORD_WIDTH-1:0] reqSrcCol_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       paddr_q  <= '0;
     else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
@@ -146,7 +147,7 @@ module niApbTarget
     else
       paddr_q  <= paddr_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       pwdata_q <= '0;
     else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
@@ -154,7 +155,7 @@ module niApbTarget
     else
       pwdata_q <= pwdata_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       pwrite_q <= '0;
     else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
@@ -162,7 +163,7 @@ module niApbTarget
     else
       pwrite_q <= pwrite_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       pstrb_q  <= '0;
     else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
@@ -170,7 +171,7 @@ module niApbTarget
     else
       pstrb_q  <= pstrb_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       reqSrcRow_q <= '0;
     else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
@@ -178,7 +179,7 @@ module niApbTarget
     else
       reqSrcRow_q <= reqSrcRow_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       reqSrcCol_q <= '0;
     else if (state_q == ST_IDLE && i_routerToNiValid && o_routerToNiReady)
@@ -188,7 +189,7 @@ module niApbTarget
   // }}} Flop incoming request fields
 
   // {{{ FSM
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       state_q <= ST_IDLE;
     else
@@ -215,7 +216,7 @@ module niApbTarget
   // Latch PRDATA from the slave when the access phase completes
   logic [31:0] prdata_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       prdata_q <= '0;
     else if (state_q == ST_APB_ACCESS && i_pready)

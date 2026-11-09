@@ -1,3 +1,4 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // Network Interface — AXI4-Lite Target (subordinate-facing)
 
 // This module receives NoC request packets from a remote initiator NI, unpacks
@@ -138,7 +139,7 @@ module niAxiLiteTarget
       reqSrcNiId_d = i_routerToNi[(4*COORD_WIDTH + 2*NI_ID_WIDTH)-1
                                     -: NI_ID_WIDTH];
 
-    always_ff @(posedge i_clk or negedge i_arst_n)
+    always_ff @(posedge i_clk, negedge i_arst_n)
       if (!i_arst_n)
         reqSrcNiId_q <= '0;
       else if (reqAccept)
@@ -156,7 +157,7 @@ module niAxiLiteTarget
   logic [COORD_WIDTH-1:0] reqSrcRow_q;
   logic [COORD_WIDTH-1:0] reqSrcCol_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       addr_q <= '0;
     else if (reqAccept)
@@ -164,7 +165,7 @@ module niAxiLiteTarget
     else
       addr_q <= addr_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       wdata_q <= '0;
     else if (reqAccept)
@@ -172,7 +173,7 @@ module niAxiLiteTarget
     else
       wdata_q <= wdata_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       wstrb_q <= '0;
     else if (reqAccept)
@@ -180,7 +181,7 @@ module niAxiLiteTarget
     else
       wstrb_q <= wstrb_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       write_q <= 1'b0;
     else if (reqAccept)
@@ -188,7 +189,7 @@ module niAxiLiteTarget
     else
       write_q <= write_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       reqSrcRow_q <= '0;
     else if (reqAccept)
@@ -196,7 +197,7 @@ module niAxiLiteTarget
     else
       reqSrcRow_q <= reqSrcRow_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       reqSrcCol_q <= '0;
     else if (reqAccept)
@@ -232,7 +233,7 @@ module niAxiLiteTarget
   // subordinate that never asserts i_awready/i_wready/i_bvalid (write) or
   // i_arready/i_rvalid (read) would park the FSM in the corresponding state
   // forever and hold the shared router port busy.
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       state_q <= ST_IDLE;
     else
@@ -240,7 +241,7 @@ module niAxiLiteTarget
 
   always_comb
     case (state_q)
-      ST_IDLE:     // wait for a request; branch on write_d to the write/read arm
+      ST_IDLE:     // wait for a request; branch on write_d to write/read arm
         if (reqAccept)
           state_d = write_d ? ST_AW : ST_AR;
         else
@@ -266,7 +267,7 @@ module niAxiLiteTarget
   logic [31:0] rdata_q;
   logic [1:0]  resp_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       rdata_q <= '0;
     else if (state_q == ST_R && i_rvalid)
@@ -276,7 +277,7 @@ module niAxiLiteTarget
     else
       rdata_q <= rdata_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       resp_q  <= pa_noc::AXI_RESP_OKAY;
     else if (state_q == ST_B && i_bvalid)

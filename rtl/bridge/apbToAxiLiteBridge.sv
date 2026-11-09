@@ -1,6 +1,7 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // APB to AXI4-Lite bridge (single-beat, single outstanding).
 //
-// Presents an APB SUBORDINATE interface (driven by a niApbTarget manager) and an
+// Presents an APB SUBORDINATE interface (driven by niApbTarget manager) and an
 // AXI4-Lite MANAGER interface (driving a local AXI peripheral). Each APB access
 // is translated into one AXI access; PREADY is held low until the AXI response.
 // PSTRB maps to WSTRB and BRESP/RRESP to PSLVERR.
@@ -67,41 +68,59 @@ module apbToAxiLiteBridge
     accept = (state_q == ST_IDLE) && i_psel && i_penable;
 
   // {{{ Latched fields
-  always_ff @(posedge i_clk or negedge i_arst_n)
-    if (!i_arst_n) begin
-      paddr_q  <= '0;
-      pwdata_q <= '0;
-      pstrb_q  <= '0;
-      pwrite_q <= 1'b0;
-    end else if (accept) begin
-      paddr_q  <= i_paddr;
-      pwdata_q <= i_pwdata;
-      pstrb_q  <= i_pstrb;
-      pwrite_q <= i_pwrite;
-    end else begin
-      paddr_q  <= paddr_q;
-      pwdata_q <= pwdata_q;
-      pstrb_q  <= pstrb_q;
-      pwrite_q <= pwrite_q;
-    end
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      paddr_q <= '0;
+    else if (accept)
+      paddr_q <= i_paddr;
+    else
+      paddr_q <= paddr_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
-    if (!i_arst_n) begin
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      pwdata_q <= '0;
+    else if (accept)
+      pwdata_q <= i_pwdata;
+    else
+      pwdata_q <= pwdata_q;
+
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      pstrb_q <= '0;
+    else if (accept)
+      pstrb_q <= i_pstrb;
+    else
+      pstrb_q <= pstrb_q;
+
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      pwrite_q <= 1'b0;
+    else if (accept)
+      pwrite_q <= i_pwrite;
+    else
+      pwrite_q <= pwrite_q;
+
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
       rdata_q <= '0;
-      resp_q  <= pa_noc::AXI_RESP_OKAY;
-    end else if (state_q == ST_B && i_bvalid) begin
-      resp_q  <= i_bresp;
-    end else if (state_q == ST_R && i_rvalid) begin
+    else if (state_q == ST_R && i_rvalid)
       rdata_q <= i_rdata;
-      resp_q  <= i_rresp;
-    end else begin
+    else
       rdata_q <= rdata_q;
-      resp_q  <= resp_q;
-    end
+
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      resp_q <= pa_noc::AXI_RESP_OKAY;
+    else if (state_q == ST_B && i_bvalid)
+      resp_q <= i_bresp;
+    else if (state_q == ST_R && i_rvalid)
+      resp_q <= i_rresp;
+    else
+      resp_q <= resp_q;
   // }}} Latched fields
 
   // {{{ FSM
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       state_q <= ST_IDLE;
     else

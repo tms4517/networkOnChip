@@ -1,19 +1,20 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // NI clock-domain-crossing bridge.
 //
 // Sits on a single NI leg between a network interface (running in its own clock
 // domain) and the fabric NI port (running in the fabric clock domain).  Two
 // asynchronous FIFOs carry the two packet streams:
 //
-//   ingress (NI -> fabric): written in the NI domain, read in the fabric domain.
-//   egress  (fabric -> NI): written in the fabric domain, read in the NI domain.
+//   ingress (NI -> fabric): written in the NI domain, read in fabric domain.
+//   egress  (fabric -> NI): written in the fabric domain, read in NI domain.
 //
 // The ready/valid handshake maps directly onto the FIFO flags: ready is the
 // negation of the destination-side full flag and valid is the negation of the
-// source-side empty flag.  Each FIFO gates its own write/read internally, so the
+// source-side empty flag.  Each FIFO gates its write/read internally, so the
 // raw valid/ready lines can drive the enables.
 //
 // When multiple NIs share one router via niRouterPort, instantiate one bridge
-// per NI on niRouterPort's local-NI-side ports; niRouterPort and the router then
+// per NI on niRouterPort's local-NI-side ports; niRouterPort and router then
 // stay entirely in the fabric clock domain while every NI keeps an independent
 // frequency.
 
@@ -38,7 +39,7 @@ module cdcNiBridge
 , output var logic                    o_routerToNiValid
 , input  var logic                    i_routerToNiReady
 
-  // Fabric side (fabric clock domain) — connects to a router/niRouterPort NI slot.
+  // Fabric side (fabric clock domain) — connects to a router/niRouterPort slot.
 , output var logic [PACKET_WIDTH-1:0] o_niToRouterFab
 , output var logic                    o_niToRouterValidFab
 , input  var logic                    i_niToRouterReadyFab

@@ -1,3 +1,4 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // NI router-port multiplexer
 //
 // The NoC mesh exposes a single NI port per router.  This module shares that
@@ -129,7 +130,7 @@ module niRouterPort
     always_comb
       o_niToRouterValid = grantValid;
 
-    always_ff @(posedge i_clk or negedge i_arst_n)
+    always_ff @(posedge i_clk, negedge i_arst_n)
       if (!i_arst_n)
         priority_q <= '0;
       else if (grantValid && i_niToRouterReady)

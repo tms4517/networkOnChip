@@ -1,10 +1,11 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // Network Interface — AHB-Lite Target (subordinate-facing)
 
 // This module receives NoC request packets from a remote initiator NI, unpacks
 // the AHB-Lite fields, and drives a full AHB-Lite transaction as the MANAGER
 // towards a local AHB-Lite subordinate.
 
-// WRITE: the payload is unpacked into HADDR/HWDATA/HSIZE/HWRITE, the address and
+// WRITE: the payload is unpacked into HADDR/HWDATA/HSIZE/HWRITE, address and
 // data phases are driven, and the access completes locally.  Writes are posted
 // (no response packet is sent back), matching the APB/AXI NI behaviour.
 
@@ -123,7 +124,7 @@ module niAhbTarget
       reqSrcNiId_d = i_routerToNi[(4*COORD_WIDTH + 2*NI_ID_WIDTH)-1
                                     -: NI_ID_WIDTH];
 
-    always_ff @(posedge i_clk or negedge i_arst_n)
+    always_ff @(posedge i_clk, negedge i_arst_n)
       if (!i_arst_n)
         reqSrcNiId_q <= '0;
       else if (reqAccept)
@@ -141,7 +142,7 @@ module niAhbTarget
   logic [COORD_WIDTH-1:0] reqSrcRow_q;
   logic [COORD_WIDTH-1:0] reqSrcCol_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       haddr_q <= '0;
     else if (reqAccept)
@@ -149,7 +150,7 @@ module niAhbTarget
     else
       haddr_q <= haddr_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       hwdata_q <= '0;
     else if (reqAccept)
@@ -157,7 +158,7 @@ module niAhbTarget
     else
       hwdata_q <= hwdata_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       hwrite_q <= 1'b0;
     else if (reqAccept)
@@ -165,7 +166,7 @@ module niAhbTarget
     else
       hwrite_q <= hwrite_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       hsize_q <= '0;
     else if (reqAccept)
@@ -173,7 +174,7 @@ module niAhbTarget
     else
       hsize_q <= hsize_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       reqSrcRow_q <= '0;
     else if (reqAccept)
@@ -181,7 +182,7 @@ module niAhbTarget
     else
       reqSrcRow_q <= reqSrcRow_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       reqSrcCol_q <= '0;
     else if (reqAccept)
@@ -204,7 +205,7 @@ module niAhbTarget
   // are posted so the FSM returns to ST_IDLE once the data phase completes.
   // Read path: ST_ADDR -> ST_DATA captures HRDATA/HRESP, then ST_RESP sends the
   // response packet and blocks until i_niToRouterReady accepts it.
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       state_q <= ST_IDLE;
     else
@@ -232,7 +233,7 @@ module niAhbTarget
   logic [31:0] hrdata_q;
   logic        hresp_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       hrdata_q <= '0;
     else if (state_q == ST_DATA && i_hready)
@@ -240,7 +241,7 @@ module niAhbTarget
     else
       hrdata_q <= hrdata_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       hresp_q <= 1'b0;
     else if (state_q == ST_DATA && i_hready)
@@ -308,7 +309,8 @@ module niAhbTarget
   logic [COORD_WIDTH-1:0]   respSrcCol;
 
   always_comb
-    respPayload = PAYLOAD_WIDTH'({haddr_q, hrdata_q, 2'b00, 3'b000, hwrite_q, hresp_q});
+    respPayload =
+      PAYLOAD_WIDTH'({haddr_q, hrdata_q, 2'b00, 3'b000, hwrite_q, hresp_q});
 
   always_comb
     respSrcRow = COORD_WIDTH'(MY_ROW);

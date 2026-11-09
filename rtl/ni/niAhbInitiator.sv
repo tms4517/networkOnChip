@@ -1,3 +1,4 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // Network Interface — AHB-Lite Initiator (manager-facing)
 
 // This module presents an AHB-Lite SUBORDINATE interface to a local AHB-Lite
@@ -24,11 +25,11 @@
 
 module niAhbInitiator
 #(parameter int unsigned GRID_WIDTH                               = 4
-, parameter int unsigned NUM_ADDR_MAP_ENTRIES                     = GRID_WIDTH * GRID_WIDTH
+, parameter int unsigned NUM_ADDR_MAP_ENTRIES = GRID_WIDTH * GRID_WIDTH
 , parameter pa_noc::ty_ADDR_MAP_ENTRY [NUM_ADDR_MAP_ENTRIES-1:0] ADDR_MAP = '0
 , parameter int unsigned SRC_ROW                                  = 0
 , parameter int unsigned SRC_COL                                  = 0
-, parameter int unsigned MAX_NI_PER_ROUTER                        = pa_noc::MAX_NI_PER_ROUTER
+, parameter int unsigned MAX_NI_PER_ROUTER = pa_noc::MAX_NI_PER_ROUTER
 , parameter int unsigned NI_ID                                    = 0
 
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
@@ -94,7 +95,7 @@ module niAhbInitiator
   always_comb
     acceptAddr = (state_q == ST_IDLE) && i_hsel && i_hready && i_htrans[1];
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       haddr_q  <= '0;
     else if (acceptAddr)
@@ -102,7 +103,7 @@ module niAhbInitiator
     else
       haddr_q  <= haddr_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       hwrite_q <= 1'b0;
     else if (acceptAddr)
@@ -110,7 +111,7 @@ module niAhbInitiator
     else
       hwrite_q <= hwrite_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       hsize_q  <= '0;
     else if (acceptAddr)
@@ -118,7 +119,7 @@ module niAhbInitiator
     else
       hsize_q  <= hsize_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       htrans_q <= '0;
     else if (acceptAddr)
@@ -127,7 +128,7 @@ module niAhbInitiator
       htrans_q <= htrans_q;
 
   // HWDATA is valid in the data phase, i.e. the cycle the FSM sits in ST_SETUP.
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       hwdata_q <= '0;
     else if (state_q == ST_SETUP)
@@ -200,7 +201,8 @@ module niAhbInitiator
   logic [PAYLOAD_WIDTH-1:0] ahbPayload;
 
   always_comb
-    ahbPayload = PAYLOAD_WIDTH'({haddr_q, hwdata_q, htrans_q, hsize_q, hwrite_q, 1'b0});
+    ahbPayload =
+      PAYLOAD_WIDTH'({haddr_q, hwdata_q, htrans_q, hsize_q, hwrite_q, 1'b0});
 
   logic [COORD_WIDTH-1:0] srcRow;
   logic [COORD_WIDTH-1:0] srcCol;
@@ -261,7 +263,7 @@ module niAhbInitiator
   always_comb
     respAccept = (state_q == ST_WAIT) && i_routerToNiValid;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       hrdata_q <= '0;
     else if (respAccept)
@@ -271,7 +273,7 @@ module niAhbInitiator
   // }}} Capture response payload
 
   // {{{ FSM
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       state_q <= ST_IDLE;
     else

@@ -1,3 +1,4 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // AXI4-Lite to APB bridge (single-beat, single outstanding).
 //
 // Presents an AXI4-Lite SUBORDINATE interface (driven by a niAxiLiteTarget
@@ -75,48 +76,61 @@ module axiLiteToApbBridge
     acceptRead = (state_q == ST_IDLE) && !i_awvalid && i_arvalid;
 
   // {{{ Latched request fields
-  always_ff @(posedge i_clk or negedge i_arst_n)
-    if (!i_arst_n) begin
-      addr_q  <= '0;
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      addr_q <= '0;
+    else if (acceptWrite)
+      addr_q <= i_awaddr;
+    else if (acceptRead)
+      addr_q <= i_araddr;
+    else
+      addr_q <= addr_q;
+
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
       write_q <= 1'b0;
-    end else if (acceptWrite) begin
-      addr_q  <= i_awaddr;
+    else if (acceptWrite)
       write_q <= 1'b1;
-    end else if (acceptRead) begin
-      addr_q  <= i_araddr;
+    else if (acceptRead)
       write_q <= 1'b0;
-    end else begin
-      addr_q  <= addr_q;
+    else
       write_q <= write_q;
-    end
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
-    if (!i_arst_n) begin
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
       wdata_q <= '0;
-      wstrb_q <= '0;
-    end else if (state_q == ST_WDATA && i_wvalid) begin
+    else if (state_q == ST_WDATA && i_wvalid)
       wdata_q <= i_wdata;
-      wstrb_q <= i_wstrb;
-    end else begin
+    else
       wdata_q <= wdata_q;
-      wstrb_q <= wstrb_q;
-    end
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
-    if (!i_arst_n) begin
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      wstrb_q <= '0;
+    else if (state_q == ST_WDATA && i_wvalid)
+      wstrb_q <= i_wstrb;
+    else
+      wstrb_q <= wstrb_q;
+
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
       prdata_q <= '0;
-      resp_q   <= pa_noc::AXI_RESP_OKAY;
-    end else if (state_q == ST_ACCESS && i_pready) begin
+    else if (state_q == ST_ACCESS && i_pready)
       prdata_q <= i_prdata;
-      resp_q   <= i_pslverr ? pa_noc::AXI_RESP_SLVERR : pa_noc::AXI_RESP_OKAY;
-    end else begin
+    else
       prdata_q <= prdata_q;
-      resp_q   <= resp_q;
-    end
+
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      resp_q <= pa_noc::AXI_RESP_OKAY;
+    else if (state_q == ST_ACCESS && i_pready)
+      resp_q <= i_pslverr ? pa_noc::AXI_RESP_SLVERR : pa_noc::AXI_RESP_OKAY;
+    else
+      resp_q <= resp_q;
   // }}} Latched request fields
 
   // {{{ FSM
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       state_q <= ST_IDLE;
     else

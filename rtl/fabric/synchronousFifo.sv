@@ -1,3 +1,4 @@
+// Copyright (c) 2023 Tej Sanghavi.
 `default_nettype none
 
 module synchronousFifo
