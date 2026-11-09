@@ -1,3 +1,4 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // Network Interface — AXI4-Lite Initiator (manager-facing)
 
 // This module presents an AXI4-Lite SUBORDINATE interface to a local AXI4-Lite
@@ -18,11 +19,11 @@
 
 module niAxiLiteInitiator
 #(parameter int unsigned GRID_WIDTH                               = 4
-, parameter int unsigned NUM_ADDR_MAP_ENTRIES                     = GRID_WIDTH * GRID_WIDTH
+, parameter int unsigned NUM_ADDR_MAP_ENTRIES = GRID_WIDTH * GRID_WIDTH
 , parameter pa_noc::ty_ADDR_MAP_ENTRY [NUM_ADDR_MAP_ENTRIES-1:0] ADDR_MAP = '0
 , parameter int unsigned SRC_ROW                                  = 0
 , parameter int unsigned SRC_COL                                  = 0
-, parameter int unsigned MAX_NI_PER_ROUTER                        = pa_noc::MAX_NI_PER_ROUTER
+, parameter int unsigned MAX_NI_PER_ROUTER = pa_noc::MAX_NI_PER_ROUTER
 , parameter int unsigned NI_ID                                    = 0
 
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
@@ -190,7 +191,7 @@ module niAxiLiteInitiator
   logic [COORD_WIDTH-1:0] dstRow_q;
   logic [COORD_WIDTH-1:0] dstCol_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       addr_q   <= '0;
     else if (acceptRead)
@@ -200,7 +201,7 @@ module niAxiLiteInitiator
     else
       addr_q   <= addr_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       wdata_q  <= '0;
     else if (acceptRead)
@@ -210,7 +211,7 @@ module niAxiLiteInitiator
     else
       wdata_q  <= wdata_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       wstrb_q  <= '0;
     else if (acceptRead)
@@ -220,7 +221,7 @@ module niAxiLiteInitiator
     else
       wstrb_q  <= wstrb_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       write_q  <= 1'b0;
     else if (acceptRead)
@@ -230,7 +231,7 @@ module niAxiLiteInitiator
     else
       write_q  <= write_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       dstRow_q <= '0;
     else if (acceptRead || acceptWrite)
@@ -238,7 +239,7 @@ module niAxiLiteInitiator
     else
       dstRow_q <= dstRow_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       dstCol_q <= '0;
     else if (acceptRead || acceptWrite)
@@ -251,7 +252,7 @@ module niAxiLiteInitiator
   begin: gen_dst_id_latch
     logic [NI_ID_WIDTH-1:0] dstNiId_q;
 
-    always_ff @(posedge i_clk or negedge i_arst_n)
+    always_ff @(posedge i_clk, negedge i_arst_n)
       if (!i_arst_n)
         dstNiId_q <= '0;
       else if (acceptRead || acceptWrite)
@@ -267,7 +268,8 @@ module niAxiLiteInitiator
   logic [PAYLOAD_WIDTH-1:0] axiPayload;
 
   always_comb
-    axiPayload = PAYLOAD_WIDTH'({addr_q, wdata_q, wstrb_q, write_q, pa_noc::AXI_RESP_OKAY});
+    axiPayload = PAYLOAD_WIDTH'({addr_q, wdata_q, wstrb_q, write_q
+      , pa_noc::AXI_RESP_OKAY});
 
   logic [COORD_WIDTH-1:0] srcRow;
   logic [COORD_WIDTH-1:0] srcCol;
@@ -331,7 +333,7 @@ module niAxiLiteInitiator
   // packet eventually produces exactly one response packet.  There is no
   // timeout -- a dropped or never-answered response would leave the FSM parked
   // in ST_WR_WAIT / ST_RD_WAIT forever.
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       state_q <= ST_IDLE;
     else
@@ -385,9 +387,10 @@ module niAxiLiteInitiator
   logic noHitStart;
 
   always_comb
-    noHitStart = (state_q == ST_IDLE) && (acceptRead || acceptWrite) && !addrHit;
+    noHitStart =
+      (state_q == ST_IDLE) && (acceptRead || acceptWrite) && !addrHit;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       rdata_q <= '0;
     else if (respAccept)
@@ -397,7 +400,7 @@ module niAxiLiteInitiator
     else
       rdata_q <= rdata_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       resp_q  <= pa_noc::AXI_RESP_OKAY;
     else if (respAccept)

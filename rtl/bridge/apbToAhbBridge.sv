@@ -1,6 +1,7 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // APB to AHB-Lite bridge (single-beat).
 //
-// Presents an APB SUBORDINATE interface (driven by a niApbTarget manager) and an
+// Presents an APB SUBORDINATE interface (driven by niApbTarget manager) and an
 // AHB-Lite MANAGER interface (driving a local AHB peripheral).  Each APB access
 // is translated into one AHB single-beat transfer; PREADY is held low until the
 // AHB data phase completes.  HRESP maps to PSLVERR.
@@ -56,36 +57,49 @@ module apbToAhbBridge
     accept = (state_q == ST_IDLE) && i_psel && i_penable;
 
   // {{{ Latched fields
-  always_ff @(posedge i_clk or negedge i_arst_n)
-    if (!i_arst_n) begin
-      paddr_q  <= '0;
-      pwdata_q <= '0;
-      pwrite_q <= 1'b0;
-    end else if (accept) begin
-      paddr_q  <= i_paddr;
-      pwdata_q <= i_pwdata;
-      pwrite_q <= i_pwrite;
-    end else begin
-      paddr_q  <= paddr_q;
-      pwdata_q <= pwdata_q;
-      pwrite_q <= pwrite_q;
-    end
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      paddr_q <= '0;
+    else if (accept)
+      paddr_q <= i_paddr;
+    else
+      paddr_q <= paddr_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
-    if (!i_arst_n) begin
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      pwdata_q <= '0;
+    else if (accept)
+      pwdata_q <= i_pwdata;
+    else
+      pwdata_q <= pwdata_q;
+
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      pwrite_q <= 1'b0;
+    else if (accept)
+      pwrite_q <= i_pwrite;
+    else
+      pwrite_q <= pwrite_q;
+
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
       rdata_q <= '0;
-      hresp_q <= 1'b0;
-    end else if (state_q == ST_DATA && i_hready) begin
+    else if (state_q == ST_DATA && i_hready)
       rdata_q <= i_hrdata;
-      hresp_q <= i_hresp;
-    end else begin
+    else
       rdata_q <= rdata_q;
+
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      hresp_q <= 1'b0;
+    else if (state_q == ST_DATA && i_hready)
+      hresp_q <= i_hresp;
+    else
       hresp_q <= hresp_q;
-    end
   // }}} Latched fields
 
   // {{{ FSM
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       state_q <= ST_IDLE;
     else

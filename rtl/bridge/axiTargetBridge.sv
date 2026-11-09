@@ -1,12 +1,14 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // AXI4-Lite peripheral target wrapper with per-initiator-protocol bridges.
 //
-// A target node for an AXI4-Lite peripheral reachable by AXI4-Lite, AHB-Lite and
-// APB initiators.  Each incoming NoC packet carries the initiator protocol
-// opcode (top PROTOCOL_WIDTH bits, above the payload).  This wrapper decodes the
-// opcode, demuxes the packet to the matching per-protocol target NI (stripping
-// the opcode), converts that NI's native bus to AXI via the corresponding bridge
-// (AHB/APB) or directly (AXI), and muxes the active source onto the single AXI
-// peripheral bus.  One transaction is served at a time (busy flag).
+// A target node for an AXI4-Lite peripheral reachable by AXI4-Lite, AHB-Lite
+// and APB initiators.  Each incoming NoC packet carries the initiator protocol
+// opcode (top PROTOCOL_WIDTH bits, above the payload).  This wrapper decodes
+// the opcode, demuxes the packet to the matching per-protocol target NI
+// (stripping the opcode), converts that NI's native bus to AXI via the
+// corresponding bridge (AHB/APB) or directly (AXI), and muxes the active
+// source onto the single AXI peripheral bus.  One transaction is served at a
+// time (busy flag).
 
 `default_nettype none
 
@@ -61,7 +63,8 @@ module axiTargetBridge
   logic               opcodeIsAxi, opcodeIsAhb, opcodeIsApb;
 
   always_comb
-    opcode = pa_noc::ty_PROTOCOL'(i_routerToNi[FAB_PACKET_WIDTH-1 -: PROTOCOL_WIDTH]);
+    opcode =
+      pa_noc::ty_PROTOCOL'(i_routerToNi[FAB_PACKET_WIDTH-1 -: PROTOCOL_WIDTH]);
 
   always_comb
     opcodeIsAxi = (opcode == pa_noc::PROTO_AXI_LITE);
@@ -82,9 +85,10 @@ module axiTargetBridge
   // The node serves one transaction at a time.  While idle (!busy_q), an
   // incoming packet is accepted only if the target NI selected by its opcode is
   // ready; accepting latches busy_q and the active protocol. While busy,
-  // o_routerToNiReady is held low so no further packet is accepted (requests are
-  // gated off every target NI), and busy_q clears when the active target returns
-  // to idle -- after it has driven the AXI bus and, for reads, sent its response.
+  // o_routerToNiReady is held low so no further packet is accepted (requests
+  // are gated off every target NI), and busy_q clears when the active target
+  // returns to idle -- after it has driven the AXI bus and, for reads, sent
+  // its response.
   logic               busy_q;
   pa_noc::ty_PROTOCOL activeProto_q;
 
@@ -138,13 +142,13 @@ module axiTargetBridge
     else
       activeProto_d = activeProto_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       busy_q <= 1'b0;
     else
       busy_q <= busy_d;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       activeProto_q <= pa_noc::PROTO_AXI_LITE;
     else
@@ -179,7 +183,8 @@ module axiTargetBridge
 
   logic [31:0] axiT_awaddr, axiT_wdata, axiT_araddr;
   logic [3:0]  axiT_wstrb;
-  logic        axiT_awvalid, axiT_wvalid, axiT_bready, axiT_arvalid, axiT_rready;
+  logic        axiT_awvalid, axiT_wvalid, axiT_bready, axiT_arvalid;
+  logic        axiT_rready;
 
   niAxiLiteTarget
   #(.GRID_WIDTH    (GRID_WIDTH)
@@ -238,7 +243,8 @@ module axiTargetBridge
 
   logic [31:0] ahbBr_awaddr, ahbBr_wdata, ahbBr_araddr;
   logic [3:0]  ahbBr_wstrb;
-  logic        ahbBr_awvalid, ahbBr_wvalid, ahbBr_bready, ahbBr_arvalid, ahbBr_rready;
+  logic        ahbBr_awvalid, ahbBr_wvalid, ahbBr_bready, ahbBr_arvalid;
+  logic        ahbBr_rready;
 
   niAhbTarget
   #(.GRID_WIDTH    (GRID_WIDTH)
@@ -320,7 +326,8 @@ module axiTargetBridge
 
   logic [31:0] apbBr_awaddr, apbBr_wdata, apbBr_araddr;
   logic [3:0]  apbBr_wstrb;
-  logic        apbBr_awvalid, apbBr_wvalid, apbBr_bready, apbBr_arvalid, apbBr_rready;
+  logic        apbBr_awvalid, apbBr_wvalid, apbBr_bready, apbBr_arvalid;
+  logic        apbBr_rready;
 
   niApbTarget
   #(.GRID_WIDTH    (GRID_WIDTH)
@@ -384,51 +391,94 @@ module axiTargetBridge
 
   // {{{ Response mux (re-tag with the active protocol opcode)
   always_comb
-    if (activeProto_q == pa_noc::PROTO_AXI_LITE) begin
+    if (activeProto_q == pa_noc::PROTO_AXI_LITE)
       o_niToRouterValid = busy_q && axi_niToRouterValid;
-      o_niToRouter      = {activeProto_q, axi_niToRouter};
-    end else if (activeProto_q == pa_noc::PROTO_AHB) begin
+    else if (activeProto_q == pa_noc::PROTO_AHB)
       o_niToRouterValid = busy_q && ahb_niToRouterValid;
-      o_niToRouter      = {activeProto_q, ahb_niToRouter};
-    end else begin
+    else
       o_niToRouterValid = busy_q && apb_niToRouterValid;
-      o_niToRouter      = {activeProto_q, apb_niToRouter};
-    end
+
+  always_comb
+    if (activeProto_q == pa_noc::PROTO_AXI_LITE)
+      o_niToRouter = {activeProto_q, axi_niToRouter};
+    else if (activeProto_q == pa_noc::PROTO_AHB)
+      o_niToRouter = {activeProto_q, ahb_niToRouter};
+    else
+      o_niToRouter = {activeProto_q, apb_niToRouter};
   // }}} Response mux
 
   // {{{ AXI peripheral bus mux (active source only)
   always_comb
-    if (activeProto_q == pa_noc::PROTO_AXI_LITE) begin
-      o_awaddr  = axiT_awaddr;
+    if (activeProto_q == pa_noc::PROTO_AXI_LITE)
+      o_awaddr = axiT_awaddr;
+    else if (activeProto_q == pa_noc::PROTO_AHB)
+      o_awaddr = ahbBr_awaddr;
+    else
+      o_awaddr = apbBr_awaddr;
+
+  always_comb
+    if (activeProto_q == pa_noc::PROTO_AXI_LITE)
       o_awvalid = axiT_awvalid;
-      o_wdata   = axiT_wdata;
-      o_wstrb   = axiT_wstrb;
-      o_wvalid = axiT_wvalid;
-      o_bready  = axiT_bready;
-      o_araddr  = axiT_araddr;
-      o_arvalid = axiT_arvalid;
-      o_rready  = axiT_rready;
-    end else if (activeProto_q == pa_noc::PROTO_AHB) begin
-      o_awaddr  = ahbBr_awaddr;
+    else if (activeProto_q == pa_noc::PROTO_AHB)
       o_awvalid = ahbBr_awvalid;
-      o_wdata   = ahbBr_wdata;
-      o_wstrb   = ahbBr_wstrb;
-      o_wvalid = ahbBr_wvalid;
-      o_bready  = ahbBr_bready;
-      o_araddr  = ahbBr_araddr;
-      o_arvalid = ahbBr_arvalid;
-      o_rready  = ahbBr_rready;
-    end else begin
-      o_awaddr  = apbBr_awaddr;
+    else
       o_awvalid = apbBr_awvalid;
-      o_wdata   = apbBr_wdata;
-      o_wstrb   = apbBr_wstrb;
+
+  always_comb
+    if (activeProto_q == pa_noc::PROTO_AXI_LITE)
+      o_wdata = axiT_wdata;
+    else if (activeProto_q == pa_noc::PROTO_AHB)
+      o_wdata = ahbBr_wdata;
+    else
+      o_wdata = apbBr_wdata;
+
+  always_comb
+    if (activeProto_q == pa_noc::PROTO_AXI_LITE)
+      o_wstrb = axiT_wstrb;
+    else if (activeProto_q == pa_noc::PROTO_AHB)
+      o_wstrb = ahbBr_wstrb;
+    else
+      o_wstrb = apbBr_wstrb;
+
+  always_comb
+    if (activeProto_q == pa_noc::PROTO_AXI_LITE)
+      o_wvalid = axiT_wvalid;
+    else if (activeProto_q == pa_noc::PROTO_AHB)
+      o_wvalid = ahbBr_wvalid;
+    else
       o_wvalid = apbBr_wvalid;
-      o_bready  = apbBr_bready;
-      o_araddr  = apbBr_araddr;
+
+  always_comb
+    if (activeProto_q == pa_noc::PROTO_AXI_LITE)
+      o_bready = axiT_bready;
+    else if (activeProto_q == pa_noc::PROTO_AHB)
+      o_bready = ahbBr_bready;
+    else
+      o_bready = apbBr_bready;
+
+  always_comb
+    if (activeProto_q == pa_noc::PROTO_AXI_LITE)
+      o_araddr = axiT_araddr;
+    else if (activeProto_q == pa_noc::PROTO_AHB)
+      o_araddr = ahbBr_araddr;
+    else
+      o_araddr = apbBr_araddr;
+
+  always_comb
+    if (activeProto_q == pa_noc::PROTO_AXI_LITE)
+      o_arvalid = axiT_arvalid;
+    else if (activeProto_q == pa_noc::PROTO_AHB)
+      o_arvalid = ahbBr_arvalid;
+    else
       o_arvalid = apbBr_arvalid;
-      o_rready  = apbBr_rready;
-    end
+
+  always_comb
+    if (activeProto_q == pa_noc::PROTO_AXI_LITE)
+      o_rready = axiT_rready;
+    else if (activeProto_q == pa_noc::PROTO_AHB)
+      o_rready = ahbBr_rready;
+    else
+      o_rready = apbBr_rready;
   // }}} AXI peripheral bus mux
 
 endmodule

@@ -1,3 +1,4 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // AHB-Lite to APB bridge (single-beat).
 //
 // Presents an AHB-Lite SUBORDINATE interface (driven by a niAhbTarget manager)
@@ -69,23 +70,32 @@ module ahbToApbBridge
   // }}} HSIZE -> APB byte strobe
 
   // {{{ Latched request fields
-  always_ff @(posedge i_clk or negedge i_arst_n)
-    if (!i_arst_n) begin
-      haddr_q  <= '0;
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      haddr_q <= '0;
+    else if (accept)
+      haddr_q <= i_haddr;
+    else
+      haddr_q <= haddr_q;
+
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
       hwrite_q <= 1'b0;
-      hsize_q  <= '0;
-    end else if (accept) begin
-      haddr_q  <= i_haddr;
+    else if (accept)
       hwrite_q <= i_hwrite;
-      hsize_q  <= i_hsize;
-    end else begin
-      haddr_q  <= haddr_q;
+    else
       hwrite_q <= hwrite_q;
-      hsize_q  <= hsize_q;
-    end
+
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      hsize_q <= '0;
+    else if (accept)
+      hsize_q <= i_hsize;
+    else
+      hsize_q <= hsize_q;
 
   // HWDATA is valid in the AHB data phase (the cycle the FSM sits in ST_SETUP).
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       hwdata_q <= '0;
     else if (state_q == ST_SETUP)
@@ -93,21 +103,25 @@ module ahbToApbBridge
     else
       hwdata_q <= hwdata_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
-    if (!i_arst_n) begin
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
       prdata_q <= '0;
-      hresp_q  <= 1'b0;
-    end else if (state_q == ST_ACCESS && i_pready) begin
+    else if (state_q == ST_ACCESS && i_pready)
       prdata_q <= i_prdata;
-      hresp_q  <= i_pslverr;
-    end else begin
+    else
       prdata_q <= prdata_q;
-      hresp_q  <= hresp_q;
-    end
+
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      hresp_q <= 1'b0;
+    else if (state_q == ST_ACCESS && i_pready)
+      hresp_q <= i_pslverr;
+    else
+      hresp_q <= hresp_q;
   // }}} Latched request fields
 
   // {{{ FSM
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       state_q <= ST_IDLE;
     else

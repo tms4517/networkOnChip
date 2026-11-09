@@ -1,3 +1,4 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // Round-robin arbiter for NUM_CLIENTS requesters.
 
 // Maintains a rotating priority mask so that after a client is granted and

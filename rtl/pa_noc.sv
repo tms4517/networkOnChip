@@ -1,5 +1,6 @@
+// Copyright (c) 2023 Tej Sanghavi.
 `ifndef PA_NOC
-  `define PA_NOC
+`define PA_NOC
 
 `default_nettype none
 
@@ -15,7 +16,8 @@ package pa_noc;
   // -------------------------------------------------------
   //   PADDR  : APB address (paddr).
   //   PWDATA : pwdata on a write request, prdata on a read response.
-  //   PWRITE : 1 = write transaction, 0 = read transaction (echoed in response).
+  //   PWRITE : 1 = write transaction, 0 = read transaction (echoed in
+  //            response).
   //   PSTRB  : write strobe (unused on reads).
   //
   // Width = 32 (PADDR) + 32 (PWDATA) + 1 (PWRITE) + 4 (PSTRB) = 69 bits.
@@ -67,7 +69,8 @@ package pa_noc;
   //   HDATA  : hwdata on a write request, hrdata on a read response.
   //   HTRANS : transfer type (echoed for the target's address phase).
   //   HSIZE  : transfer size.
-  //   HWRITE : 1 = write transaction, 0 = read transaction (echoed in response).
+  //   HWRITE : 1 = write transaction, 0 = read transaction (echoed in
+  //            response).
   //   HRESP  : AHB-Lite response (0 = OKAY, 1 = ERROR) on a response packet.
   //
   // Only single-beat IDLE/NONSEQ transfers are modelled; hprot/hmastlock and

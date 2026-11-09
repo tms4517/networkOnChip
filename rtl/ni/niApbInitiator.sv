@@ -1,3 +1,4 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // Network Interface — APB Initiator
 
 // This module sits between an APB initiator (master) and a NoC router NI port.
@@ -16,11 +17,11 @@
 
 module niApbInitiator
 #(parameter int unsigned GRID_WIDTH                               = 4
-, parameter int unsigned NUM_ADDR_MAP_ENTRIES                     = GRID_WIDTH * GRID_WIDTH
+, parameter int unsigned NUM_ADDR_MAP_ENTRIES = GRID_WIDTH * GRID_WIDTH
 , parameter pa_noc::ty_ADDR_MAP_ENTRY [NUM_ADDR_MAP_ENTRIES-1:0] ADDR_MAP = '0
 , parameter int unsigned SRC_ROW                                  = 0
 , parameter int unsigned SRC_COL                                  = 0
-, parameter int unsigned MAX_NI_PER_ROUTER                        = pa_noc::MAX_NI_PER_ROUTER
+, parameter int unsigned MAX_NI_PER_ROUTER = pa_noc::MAX_NI_PER_ROUTER
 , parameter int unsigned NI_ID                                    = 0
 
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
@@ -157,7 +158,8 @@ module niApbInitiator
       dstNiId = gen_addr_decode_with_id.dstNiId;
 
     always_comb
-      o_niToRouter = {apbPayload, srcNiId, srcRow, srcCol, dstNiId, dstRow, dstCol};
+      o_niToRouter =
+        {apbPayload, srcNiId, srcRow, srcCol, dstNiId, dstRow, dstCol};
   end: gen_with_ids
   else
   begin: gen_no_ids
@@ -191,7 +193,7 @@ module niApbInitiator
 
   ty_state state_q, state_d;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       state_q <= ST_IDLE;
     else

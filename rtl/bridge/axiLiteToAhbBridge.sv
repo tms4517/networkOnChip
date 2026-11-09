@@ -1,3 +1,4 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // AXI4-Lite to AHB-Lite bridge (single-beat, single outstanding).
 //
 // Presents an AXI4-Lite SUBORDINATE interface (driven by a niAxiLiteTarget
@@ -67,22 +68,27 @@ module axiLiteToAhbBridge
     acceptRead = (state_q == ST_IDLE) && !i_awvalid && i_arvalid;
 
   // {{{ Latched fields
-  always_ff @(posedge i_clk or negedge i_arst_n)
-    if (!i_arst_n) begin
-      addr_q  <= '0;
-      write_q <= 1'b0;
-    end else if (acceptWrite) begin
-      addr_q  <= i_awaddr;
-      write_q <= 1'b1;
-    end else if (acceptRead) begin
-      addr_q  <= i_araddr;
-      write_q <= 1'b0;
-    end else begin
-      addr_q  <= addr_q;
-      write_q <= write_q;
-    end
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      addr_q <= '0;
+    else if (acceptWrite)
+      addr_q <= i_awaddr;
+    else if (acceptRead)
+      addr_q <= i_araddr;
+    else
+      addr_q <= addr_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      write_q <= 1'b0;
+    else if (acceptWrite)
+      write_q <= 1'b1;
+    else if (acceptRead)
+      write_q <= 1'b0;
+    else
+      write_q <= write_q;
+
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       wdata_q <= '0;
     else if (state_q == ST_WDATA && i_wvalid)
@@ -90,21 +96,25 @@ module axiLiteToAhbBridge
     else
       wdata_q <= wdata_q;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
-    if (!i_arst_n) begin
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
       rdata_q <= '0;
-      hresp_q <= 1'b0;
-    end else if (state_q == ST_DATA && i_hready) begin
+    else if (state_q == ST_DATA && i_hready)
       rdata_q <= i_hrdata;
-      hresp_q <= i_hresp;
-    end else begin
+    else
       rdata_q <= rdata_q;
+
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      hresp_q <= 1'b0;
+    else if (state_q == ST_DATA && i_hready)
+      hresp_q <= i_hresp;
+    else
       hresp_q <= hresp_q;
-    end
   // }}} Latched fields
 
   // {{{ FSM
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       state_q <= ST_IDLE;
     else

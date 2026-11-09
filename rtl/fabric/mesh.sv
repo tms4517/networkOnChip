@@ -1,3 +1,4 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // This module interconnects the router to form a mesh network. Below, is an
 // example of how routers in a 4x4 mesh network are interconnected. The arrows
 // indicate the direction of data flow.
@@ -73,149 +74,149 @@ module mesh
 
   // {{{ Tie off edge router input connections
   // North and south edges: iterate over columns
-  for (genvar col = 0; col < GRID_WIDTH; col++) begin: tieOffNorthSouth
+  for (genvar j = 0; j < GRID_WIDTH; j++) begin: tieOffNorthSouth
 
     // North edge
     always_comb
-      northInput[0][col] = '0;
+      northInput[0][j] = '0;
     always_comb
-      northInputValid[0][col] = '0;
+      northInputValid[0][j] = '0;
     always_comb
-      northOutputReady[0][col] = '0;
+      northOutputReady[0][j] = '0;
 
     // South edge
     always_comb
-      southInput[GRID_WIDTH-1][col] = '0;
+      southInput[GRID_WIDTH-1][j] = '0;
     always_comb
-      southInputValid[GRID_WIDTH-1][col] = '0;
+      southInputValid[GRID_WIDTH-1][j] = '0;
     always_comb
-      southOutputReady[GRID_WIDTH-1][col] = '0;
+      southOutputReady[GRID_WIDTH-1][j] = '0;
 
   end: tieOffNorthSouth
 
   // East and west edges: iterate over rows
-  for (genvar row = 0; row < GRID_WIDTH; row++) begin: tieOffEastWest
+  for (genvar i = 0; i < GRID_WIDTH; i++) begin: tieOffEastWest
 
     // East edge
     always_comb
-      eastInput[row][GRID_WIDTH-1] = '0;
+      eastInput[i][GRID_WIDTH-1] = '0;
     always_comb
-      eastInputValid[row][GRID_WIDTH-1] = '0;
+      eastInputValid[i][GRID_WIDTH-1] = '0;
     always_comb
-      eastOutputReady[row][GRID_WIDTH-1] = '0;
+      eastOutputReady[i][GRID_WIDTH-1] = '0;
 
     // West edge
     always_comb
-      westInput[row][0] = '0;
+      westInput[i][0] = '0;
     always_comb
-      westInputValid[row][0] = '0;
+      westInputValid[i][0] = '0;
     always_comb
-      westOutputReady[row][0] = '0;
+      westOutputReady[i][0] = '0;
 
   end: tieOffEastWest
   // }}} Tie off edge router input connections
 
   // {{{ Router interconnections
   // North-South connections
-  for (genvar row = 1; row < GRID_WIDTH; row++) begin: connectNorth
-    for (genvar col = 0; col < GRID_WIDTH; col++) begin: connectNorthCols
+  for (genvar i = 1; i < GRID_WIDTH; i++) begin: connectNorth
+    for (genvar j = 0; j < GRID_WIDTH; j++) begin: connectNorthCols
       always_comb
-        northInput[row][col] = southOutput[row-1][col];
+        northInput[i][j] = southOutput[i-1][j];
       always_comb
-        northInputValid[row][col] = southOutputValid[row-1][col];
+        northInputValid[i][j] = southOutputValid[i-1][j];
       always_comb
-        southOutputReady[row-1][col] = northInputReady[row][col];
+        southOutputReady[i-1][j] = northInputReady[i][j];
     end: connectNorthCols
   end: connectNorth
 
-  for (genvar row = 0; row < GRID_WIDTH-1; row++) begin: connectSouth
-    for (genvar col = 0; col < GRID_WIDTH; col++) begin: connectSouthCols
+  for (genvar i = 0; i < GRID_WIDTH-1; i++) begin: connectSouth
+    for (genvar j = 0; j < GRID_WIDTH; j++) begin: connectSouthCols
       always_comb
-        southInput[row][col] = northOutput[row+1][col];
+        southInput[i][j] = northOutput[i+1][j];
       always_comb
-        southInputValid[row][col] = northOutputValid[row+1][col];
+        southInputValid[i][j] = northOutputValid[i+1][j];
       always_comb
-        northOutputReady[row+1][col] = southInputReady[row][col];
+        northOutputReady[i+1][j] = southInputReady[i][j];
     end: connectSouthCols
   end: connectSouth
 
   // East-West connections
-  for (genvar row = 0; row < GRID_WIDTH; row++) begin: connectEast
-    for (genvar col = 0; col < GRID_WIDTH-1; col++) begin: connectEastCols
+  for (genvar i = 0; i < GRID_WIDTH; i++) begin: connectEast
+    for (genvar j = 0; j < GRID_WIDTH-1; j++) begin: connectEastCols
       always_comb
-        eastInput[row][col] = westOutput[row][col+1];
+        eastInput[i][j] = westOutput[i][j+1];
       always_comb
-        eastInputValid[row][col] = westOutputValid[row][col+1];
+        eastInputValid[i][j] = westOutputValid[i][j+1];
       always_comb
-        westOutputReady[row][col+1] = eastInputReady[row][col];
+        westOutputReady[i][j+1] = eastInputReady[i][j];
     end: connectEastCols
   end: connectEast
 
-  for (genvar row = 0; row < GRID_WIDTH; row++) begin: connectWest
-    for (genvar col = 1; col < GRID_WIDTH; col++) begin: connectWestCols
+  for (genvar i = 0; i < GRID_WIDTH; i++) begin: connectWest
+    for (genvar j = 1; j < GRID_WIDTH; j++) begin: connectWestCols
       always_comb
-        westInput[row][col] = eastOutput[row][col-1];
+        westInput[i][j] = eastOutput[i][j-1];
       always_comb
-        westInputValid[row][col] = eastOutputValid[row][col-1];
+        westInputValid[i][j] = eastOutputValid[i][j-1];
       always_comb
-        eastOutputReady[row][col-1] = westInputReady[row][col];
+        eastOutputReady[i][j-1] = westInputReady[i][j];
     end: connectWestCols
   end: connectWest
   // }}} Router interconnections
 
   // {{{ Mesh
-  for (genvar row = 0; row < GRID_WIDTH; row++) begin: perRow
-    for (genvar col = 0; col < GRID_WIDTH; col++) begin: perCol
+  for (genvar i = 0; i < GRID_WIDTH; i++) begin: perRow
+    for (genvar j = 0; j < GRID_WIDTH; j++) begin: perCol
 
       router
       #(.GRID_WIDTH (GRID_WIDTH)
       , .PACKET_WIDTH (PACKET_WIDTH)
       , .FIFO_ADDRESS_WIDTH (FIFO_ADDRESS_WIDTH)
-      , .ROUTER_ROW (row)
-      , .ROUTER_COL (col)
+      , .ROUTER_ROW (i)
+      , .ROUTER_COL (j)
       ) u_router
       ( .i_clk    (i_clk)
       , .i_arst_n (i_arst_n)
 
-      , .i_ni      (i_niToRouter[row][col])
-      , .i_niValid (i_niToRouterValid[row][col])
-      , .o_niReady (o_niToRouterReady[row][col])
+      , .i_ni      (i_niToRouter[i][j])
+      , .i_niValid (i_niToRouterValid[i][j])
+      , .o_niReady (o_niToRouterReady[i][j])
 
-      , .o_ni      (o_routerToNi[row][col])
-      , .o_niValid (o_routerToNiValid[row][col])
-      , .i_niReady (i_routerToNiReady[row][col])
+      , .o_ni      (o_routerToNi[i][j])
+      , .o_niValid (o_routerToNiValid[i][j])
+      , .i_niReady (i_routerToNiReady[i][j])
 
-      , .i_north      (northInput[row][col])
-      , .i_northValid (northInputValid[row][col])
-      , .o_northReady (northInputReady[row][col])
+      , .i_north      (northInput[i][j])
+      , .i_northValid (northInputValid[i][j])
+      , .o_northReady (northInputReady[i][j])
 
-      , .i_south      (southInput[row][col])
-      , .i_southValid (southInputValid[row][col])
-      , .o_southReady (southInputReady[row][col])
+      , .i_south      (southInput[i][j])
+      , .i_southValid (southInputValid[i][j])
+      , .o_southReady (southInputReady[i][j])
 
-      , .i_east      (eastInput[row][col])
-      , .i_eastValid (eastInputValid[row][col])
-      , .o_eastReady (eastInputReady[row][col])
+      , .i_east      (eastInput[i][j])
+      , .i_eastValid (eastInputValid[i][j])
+      , .o_eastReady (eastInputReady[i][j])
 
-      , .i_west      (westInput[row][col])
-      , .i_westValid (westInputValid[row][col])
-      , .o_westReady (westInputReady[row][col])
+      , .i_west      (westInput[i][j])
+      , .i_westValid (westInputValid[i][j])
+      , .o_westReady (westInputReady[i][j])
 
-      , .o_north      (northOutput[row][col])
-      , .o_northValid (northOutputValid[row][col])
-      , .i_northReady (northOutputReady[row][col])
+      , .o_north      (northOutput[i][j])
+      , .o_northValid (northOutputValid[i][j])
+      , .i_northReady (northOutputReady[i][j])
 
-      , .o_south      (southOutput[row][col])
-      , .o_southValid (southOutputValid[row][col])
-      , .i_southReady (southOutputReady[row][col])
+      , .o_south      (southOutput[i][j])
+      , .o_southValid (southOutputValid[i][j])
+      , .i_southReady (southOutputReady[i][j])
 
-      , .o_east      (eastOutput[row][col])
-      , .o_eastValid (eastOutputValid[row][col])
-      , .i_eastReady (eastOutputReady[row][col])
+      , .o_east      (eastOutput[i][j])
+      , .o_eastValid (eastOutputValid[i][j])
+      , .i_eastReady (eastOutputReady[i][j])
 
-      , .o_west      (westOutput[row][col])
-      , .o_westValid (westOutputValid[row][col])
-      , .i_westReady (westOutputReady[row][col])
+      , .o_west      (westOutput[i][j])
+      , .o_westValid (westOutputValid[i][j])
+      , .i_westReady (westOutputReady[i][j])
       );
 
     end: perCol

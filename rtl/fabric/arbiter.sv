@@ -1,3 +1,4 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // Arbiter between router input FIFOs.
 //
 // - Uses `roundRobinArbiter` to generate a fair one-hot grant across all

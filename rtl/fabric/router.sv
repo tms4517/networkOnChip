@@ -1,3 +1,4 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // This module implements a simple router for a network-on-chip (NoC).
 
 // It receives packets from a Network Interface (NI) and neighboring routers
@@ -312,13 +313,13 @@ module router
   logic isDestination;
   logic niValid;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       o_ni <= '0;
     else
       o_ni <= niValid ? packet : '0;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       o_niValid <= '0;
     else
@@ -339,7 +340,7 @@ module router
   logic                    eastValid, westValid, northValid, southValid;
 
   // {{{ East output
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       o_east <= '0;
     else
@@ -348,7 +349,7 @@ module router
   always_comb
     eastPacket = eastValid ? packet : '0;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       o_eastValid <= '0;
     else
@@ -366,7 +367,7 @@ module router
   // }}} East output
 
   // {{{ West output
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       o_west <= '0;
     else
@@ -375,7 +376,7 @@ module router
   always_comb
     westPacket = westValid ? packet : '0;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       o_westValid <= '0;
     else
@@ -393,7 +394,7 @@ module router
   // }}} West output
 
   // {{{ South output
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       o_south <= '0;
     else
@@ -402,7 +403,7 @@ module router
   always_comb
     southPacket = southValid ? packet : '0;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       o_southValid <= '0;
     else
@@ -421,7 +422,7 @@ module router
   // }}} South output
 
   // {{{ North output
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       o_north <= '0;
     else
@@ -430,7 +431,7 @@ module router
   always_comb
     northPacket = northValid ? packet : '0;
 
-  always_ff @(posedge i_clk or negedge i_arst_n)
+  always_ff @(posedge i_clk, negedge i_arst_n)
     if (!i_arst_n)
       o_northValid <= '0;
     else

@@ -1,8 +1,10 @@
+// Copyright (c) 2023 Tej Sanghavi.
 // Asynchronous (dual-clock) FIFO.
 //
-// Data is written in the i_writeClk domain and read in the i_readClk domain, where the
-// two clocks are asynchronous to each other.  Gray-coded read/write pointers are
-// passed across the clock boundary through two-flop synchronisers, following the
+// Data is written in the i_writeClk domain and read in the i_readClk domain,
+// where the two clocks are asynchronous to each other.  Gray-coded read/write
+// pointers are passed across the clock boundary through two-flop
+// synchronisers, following the
 // style of Clifford Cummings' "Simulation and Synthesis Techniques for
 // Asynchronous FIFO Design" (SNUG 2002).
 //
@@ -71,7 +73,8 @@ module asyncFifo
   // Gray pointer with its two MSBs inverted.
   always_comb
     full_d =
-      (writeGray_d == {~readGraySyncW_q2[ADDR_W:ADDR_W-1], readGraySyncW_q2[ADDR_W-2:0]});
+      (writeGray_d == {~readGraySyncW_q2[ADDR_W:ADDR_W-1]
+        , readGraySyncW_q2[ADDR_W-2:0]});
 
   always_ff @(posedge i_writeClk, negedge i_writeArst_n)
     if (!i_writeArst_n)
@@ -144,7 +147,7 @@ module asyncFifo
 
   // {{{ FIFO memory (write-clock write, combinational read)
   localparam int unsigned DEPTH = 1 << ADDR_W;
-  logic [DATA_W-1:0] mem [DEPTH-1:0];
+  logic [DEPTH-1:0][DATA_W-1:0] mem;
 
   /* svlint off explicit_if_else */
   // Intended memory inference pattern.
