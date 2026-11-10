@@ -3,10 +3,15 @@ TOP_MODULE = noc
 NOC_ROOT = $(shell pwd)
 RTL_PATH = $(NOC_ROOT)/rtl
 TB_PATH = $(NOC_ROOT)/tb/directedTb
+FORMAL_PATH = $(NOC_ROOT)/tb/formal
+# Optional job-submission prefix (e.g. an LSF bsub command); empty runs locally.
+GRID ?=
 FILE_LIST = $(RTL_PATH)/$(TOP_MODULE).f
 TEST ?= 1
 SYNTH_PATH = $(NOC_ROOT)/synthesis
 YOSYS_SLANG_LIBSTDCPP = /tool/pandora64/.package/gcc-15.2.0/lib64/libstdc++.so.6
+
+export NOC_ROOT
 
 .PHONY: lint
 lint:
@@ -118,6 +123,13 @@ cdcNiBridgeTb:
 nocAsyncIntegration1Tb:
 	mkdir -p $(LOG_DIR)/nocAsyncIntegration1Tb && \
 	$(MAKE) -C $(TB_PATH)/nocAsyncIntegration1 | tee $(LOG_DIR)/nocAsyncIntegration1Tb/sim.log
+
+.PHONY: formalRouterTb
+formalRouterTb:
+	mkdir -p $(LOG_DIR)/formalRouterTb && \
+	cd $(LOG_DIR)/formalRouterTb && \
+	rm -rf jgproject && \
+	$(GRID) jg -no_gui $(FORMAL_PATH)/router/jg/jg.tcl | tee jg.log
 
 .PHONY: synthesis
 synthesis:
