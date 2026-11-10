@@ -3,10 +3,11 @@
 # correct delivery depends on the destination NI-ID demux in both directions.
 
 TOP_MODULE = tb_nocAhbIntegration2_top
-RTL_PATH = ../../../rtl
+TB_DIR ?= $(CURDIR)/
+RTL_PATH = $(TB_DIR)../../../rtl
 NOC_FILE_LIST = $(RTL_PATH)/noc.f
-TB_SV = tb_nocAhbIntegration2_top.sv
-TB_CPP = tb_nocAhbIntegration2.cpp
+TB_SV = $(TB_DIR)tb_nocAhbIntegration2_top.sv
+TB_CPP = $(TB_DIR)tb_nocAhbIntegration2.cpp
 WAVEFORM = waveform_nocAhbIntegration2.vcd
 STAMP = .stamp.verilate
 

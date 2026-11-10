@@ -3,10 +3,11 @@
 # their own clock, crossing domains through per-NI cdcNiBridge instances.
 
 TOP_MODULE = tb_nocAsyncIntegration1_top
-RTL_PATH = ../../../rtl
+TB_DIR ?= $(CURDIR)/
+RTL_PATH = $(TB_DIR)../../../rtl
 NOC_FILE_LIST = $(RTL_PATH)/noc.f
-TB_SV = tb_nocAsyncIntegration1_top.sv
-TB_CPP = tb_nocAsyncIntegration1.cpp
+TB_SV = $(TB_DIR)tb_nocAsyncIntegration1_top.sv
+TB_CPP = $(TB_DIR)tb_nocAsyncIntegration1.cpp
 STAMP = .stamp.verilate
 
 GRID_WIDTH ?= 4

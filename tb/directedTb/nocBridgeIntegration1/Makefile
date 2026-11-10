@@ -3,13 +3,14 @@
 # with opcode-tagged packets converted at the target by protocol bridges.
 
 TOP_MODULE = tb_nocBridgeIntegration1_top
-RTL_PATH = ../../../rtl
+TB_DIR ?= $(CURDIR)/
+RTL_PATH = $(TB_DIR)../../../rtl
 NOC_FILE_LIST = $(RTL_PATH)/noc.f
 EXTRA_RTL = $(RTL_PATH)/bridge/ahbToApbBridge.sv \
             $(RTL_PATH)/bridge/axiLiteToApbBridge.sv \
             $(RTL_PATH)/bridge/apbTargetBridge.sv
-TB_SV = tb_nocBridgeIntegration1_top.sv
-TB_CPP = tb_nocBridgeIntegration1.cpp
+TB_SV = $(TB_DIR)tb_nocBridgeIntegration1_top.sv
+TB_CPP = $(TB_DIR)tb_nocBridgeIntegration1.cpp
 WAVEFORM = waveform_nocBridgeIntegration1.vcd
 STAMP = .stamp.verilate
 

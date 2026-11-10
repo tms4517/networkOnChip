@@ -3,7 +3,8 @@
 # make designerTb TEST=3   # multi-source to one destination (tb_noc_multi_to_one.cpp)
 
 TOP_MODULE=noc
-RTL_PATH=../../../rtl
+TB_DIR ?= $(CURDIR)/
+RTL_PATH=$(TB_DIR)../../../rtl
 FILE_LIST=$(RTL_PATH)/$(TOP_MODULE).f
 GRID_WIDTH ?= 4
 MAX_SIM_TIME ?= 1000
@@ -11,11 +12,11 @@ TEST ?= 1
 VERILATOR_CFLAGS := -CFLAGS -DGRID_WIDTH=$(GRID_WIDTH) -CFLAGS -DMAX_SIM_TIME=$(MAX_SIM_TIME)
 
 ifeq ($(TEST),1)
-TB_CPP := tb_noc.cpp
+TB_CPP := $(TB_DIR)tb_noc.cpp
 WAVEFORM := waveform.vcd
 STAMP := .stamp.verilate.test1
 else ifeq ($(TEST),2)
-TB_CPP := tb_noc_single_packet.cpp
+TB_CPP := $(TB_DIR)tb_noc_single_packet.cpp
 WAVEFORM := waveform_single.vcd
 STAMP := .stamp.verilate.test2
 SRC_ROW ?= 0
@@ -28,7 +29,7 @@ VERILATOR_CFLAGS += -CFLAGS -DSRC_ROW=$(SRC_ROW) -CFLAGS -DSRC_COL=$(SRC_COL)
 VERILATOR_CFLAGS += -CFLAGS -DDST_ROW=$(DST_ROW) -CFLAGS -DDST_COL=$(DST_COL)
 VERILATOR_CFLAGS += -CFLAGS -DTEST_PAYLOAD=$(TEST_PAYLOAD) -CFLAGS -DTIMEOUT_CYCLES=$(TIMEOUT_CYCLES)
 else ifeq ($(TEST),3)
-TB_CPP := tb_noc_multi_to_one.cpp
+TB_CPP := $(TB_DIR)tb_noc_multi_to_one.cpp
 WAVEFORM := waveform_multi_to_one.vcd
 STAMP := .stamp.verilate.test3
 DST_ROW ?= 1

@@ -3,12 +3,13 @@
 # transactions and returns the correct response packets.
 
 TOP_MODULE = tb_niAxiLiteTarget_top
-RTL_PATH = ../../../rtl
-ASSERT_PATH = ../assertions
+TB_DIR ?= $(CURDIR)/
+RTL_PATH = $(TB_DIR)../../../rtl
+ASSERT_PATH = $(TB_DIR)../assertions
 NOC_FILE_LIST = $(RTL_PATH)/noc.f
 ASSERT_SV = $(ASSERT_PATH)/axil_checker.sv
-TB_SV = tb_niAxiLiteTarget_top.sv
-TB_CPP = tb_niAxiLiteTarget.cpp
+TB_SV = $(TB_DIR)tb_niAxiLiteTarget_top.sv
+TB_CPP = $(TB_DIR)tb_niAxiLiteTarget.cpp
 WAVEFORM = waveform_niAxiLiteTarget.vcd
 STAMP = .stamp.verilate
 

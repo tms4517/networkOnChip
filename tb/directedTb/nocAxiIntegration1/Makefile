@@ -4,12 +4,13 @@
 # back to the correct manager.
 
 TOP_MODULE = tb_nocAxiIntegration1_top
-RTL_PATH = ../../../rtl
-ASSERT_PATH = ../assertions
+TB_DIR ?= $(CURDIR)/
+RTL_PATH = $(TB_DIR)../../../rtl
+ASSERT_PATH = $(TB_DIR)../assertions
 NOC_FILE_LIST = $(RTL_PATH)/noc.f
 ASSERT_SV = $(ASSERT_PATH)/axil_checker.sv
-TB_SV = tb_nocAxiIntegration1_top.sv
-TB_CPP = tb_nocAxiIntegration1.cpp
+TB_SV = $(TB_DIR)tb_nocAxiIntegration1_top.sv
+TB_CPP = $(TB_DIR)tb_nocAxiIntegration1.cpp
 WAVEFORM = waveform_nocAxiIntegration1.vcd
 STAMP = .stamp.verilate
 

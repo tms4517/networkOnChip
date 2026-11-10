@@ -3,9 +3,10 @@
 # NI-ID demux) at NUM_NI = 3.
 
 TOP_MODULE = tb_niRouterPort_top
-RTL_PATH = ../../../rtl
-TB_SV = tb_niRouterPort_top.sv
-TB_CPP = tb_niRouterPort.cpp
+TB_DIR ?= $(CURDIR)/
+RTL_PATH = $(TB_DIR)../../../rtl
+TB_SV = $(TB_DIR)tb_niRouterPort_top.sv
+TB_CPP = $(TB_DIR)tb_niRouterPort.cpp
 STAMP = .stamp.verilate
 
 GRID_WIDTH ?= 4

@@ -3,10 +3,11 @@
 # at the correct destination router.
 
 TOP_MODULE = tb_niApbInitiator_top
-RTL_PATH = ../../../rtl
+TB_DIR ?= $(CURDIR)/
+RTL_PATH = $(TB_DIR)../../../rtl
 NOC_FILE_LIST = $(RTL_PATH)/noc.f
-TB_SV = tb_niApbInitiator_top.sv
-TB_CPP = tb_niApbInitiator.cpp
+TB_SV = $(TB_DIR)tb_niApbInitiator_top.sv
+TB_CPP = $(TB_DIR)tb_niApbInitiator.cpp
 WAVEFORM = waveform_niApbInitiator.vcd
 STAMP = .stamp.verilate
 
