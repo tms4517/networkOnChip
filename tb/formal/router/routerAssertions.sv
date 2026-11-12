@@ -724,21 +724,6 @@ module routerAssertions
 
   peakThroughput: cover property (@(posedge i_clk) cover_peakThroughput);
 
-  // Worst-case arbitration wait: which wait depths beyond strict round-robin
-  // (NUM_PORTS-1) are reachable. The deepest covered value is the real bound.
-  for (genvar i = 0; i < NUM_PORTS; i++) begin: genCoverWaitPort
-    for (genvar j = NUM_PORTS; j < 2*NUM_PORTS; j++) begin: genCoverWaitDepth
-
-      logic cover_waitAcks;
-
-      always_comb
-        cover_waitAcks = (waitAcks_q[i] == WAIT_WIDTH'(j));
-
-      waitAcks: cover property (@(posedge i_clk) cover_waitAcks);
-
-    end: genCoverWaitDepth
-  end: genCoverWaitPort
-
   // }}} Cover properties
 
 endmodule

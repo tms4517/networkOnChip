@@ -57,7 +57,7 @@ formalRouterTb:
 	mkdir -p $(LOG_DIR)/formalRouterTb && \
 	cd $(LOG_DIR)/formalRouterTb && \
 	rm -rf jgproject && \
-	$(GRID) jg -no_gui $(FORMAL_PATH)/router/jg/jg.tcl | tee jg.log
+	$(GRID) jg $(FORMAL_PATH)/router/jg/jg.tcl | tee jg.log
 
 .PHONY: synthesis
 synthesis:

@@ -152,7 +152,6 @@ the downstream keeps accepting.
 | C3 | C | All five FIFOs non-empty at once. | `cover_allPortsContending` |
 | C4 | C | A tracked packet is delivered. | `cover_trackedDelivered` |
 | C5 | C | Peak throughput: forwards two cycles apart. | `cover_peakThroughput` |
-| C6 | C | Arbitration wait depth 5..9 per port (measures the real fairness bound). | `genCoverWaitPort[*].genCoverWaitDepth[*].waitAcks` |
 
 ## 6. Proof bring-up order
 
@@ -179,13 +178,13 @@ Re-run with `make formalRouterTb`; logs in `logs/formalRouterTb/`
 | Data integrity | D2 | Proven |
 | Work conserving | W1, W2 | Proven |
 | Covers | C1–C5 | All covered |
-| Covers | C6 wait depth 5–9 | Unreachable (all ports): true round-robin |
 
 All properties prove in under 2 s each.
 
 ### F-1: round-robin arbiter grants each port twice in a row (FIXED)
 
-Before the fix R3 failed (CEX 13–15 cycles) and C6 covered wait depth 8.
+Before the fix R3 failed (CEX 13–15 cycles) and a wait depth of 8 was
+reachable (temporary depth covers, since removed).
 
 `roundRobinArbiter` computes the next grant (`grant_d`) from `mask_q`, but on
 an ack `mask_q` only advances to the mask after the *previous* grant
@@ -193,15 +192,15 @@ an ack `mask_q` only advances to the mask after the *previous* grant
 one ack, so a port that still has packets is re-granted once before priority
 moves on. With all five FIFOs busy the grant order is 0,0,1,1,2,2,3,3,4,4,...
 
-- Impact: not a starvation bug — R4 proves the worst case wait is 8 forwards
-  (C6 covers depth 8, proves depth 9 unreachable). But fairness is half that
+- Impact: not a starvation bug — R4 proves the worst case wait is 8 forwards.
+  But fairness is half that
   of true round-robin (4), and the header comment ("the next-highest-numbered
   client becomes highest priority") is not what the RTL does.
 - A side effect: when the acked FIFO held only one packet the re-grant points
   at an empty FIFO, costing one dead cycle before re-arbitration.
 - Fix (2026-11-11): `maskedReq = i_request & mask_d;` in `roundRobinArbiter`,
   so the next grant is picked with the mask after the current grant. R3 now
-  proves on all ports and wait depths above N-1 are unreachable. All runnable
+  proves on all ports. All runnable
   directed TBs still pass.
 
 ## 8. Open items / notes
