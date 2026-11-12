@@ -89,10 +89,12 @@ module tb_nocAsyncIntegration1_top
   // {{{ NOC interconnect arrays (fabric clock domain)
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][PACKET_WIDTH-1:0] niToRouter;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0]                   niToRouterValid;
+/* verilator lint_off UNUSEDSIGNAL */
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0]                   niToRouterReady;
 
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][PACKET_WIDTH-1:0] routerToNi;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0]                   routerToNiValid;
+/* verilator lint_on UNUSEDSIGNAL */
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0]                   routerToNiReady;
   // }}} NOC interconnect arrays
 
@@ -259,10 +261,11 @@ module tb_nocAsyncIntegration1_top
   // }}} Initiator 1
 
   // {{{ Target A NI + CDC bridge + APB slave
+/* verilator lint_off UNUSEDSIGNAL */
   logic [31:0] apbA_paddr;
+/* verilator lint_on UNUSEDSIGNAL */
   logic [31:0] apbA_pwdata;
   logic        apbA_pwrite;
-  logic [3:0]  apbA_pstrb;
   logic        apbA_psel;
   logic        apbA_penable;
   logic        apbA_pready;
@@ -280,7 +283,9 @@ module tb_nocAsyncIntegration1_top
   , .o_paddr   (apbA_paddr)
   , .o_pwdata  (apbA_pwdata)
   , .o_pwrite  (apbA_pwrite)
-  , .o_pstrb   (apbA_pstrb)
+/* verilator lint_off PINCONNECTEMPTY */
+  , .o_pstrb   ()
+/* verilator lint_on PINCONNECTEMPTY */
   , .o_psel    (apbA_psel)
   , .o_penable (apbA_penable)
   , .i_pready  (apbA_pready)
@@ -342,10 +347,11 @@ module tb_nocAsyncIntegration1_top
   // }}} Target A
 
   // {{{ Target B NI + CDC bridge + APB slave
+/* verilator lint_off UNUSEDSIGNAL */
   logic [31:0] apbB_paddr;
+/* verilator lint_on UNUSEDSIGNAL */
   logic [31:0] apbB_pwdata;
   logic        apbB_pwrite;
-  logic [3:0]  apbB_pstrb;
   logic        apbB_psel;
   logic        apbB_penable;
   logic        apbB_pready;
@@ -363,7 +369,9 @@ module tb_nocAsyncIntegration1_top
   , .o_paddr   (apbB_paddr)
   , .o_pwdata  (apbB_pwdata)
   , .o_pwrite  (apbB_pwrite)
-  , .o_pstrb   (apbB_pstrb)
+/* verilator lint_off PINCONNECTEMPTY */
+  , .o_pstrb   ()
+/* verilator lint_on PINCONNECTEMPTY */
   , .o_psel    (apbB_psel)
   , .o_penable (apbB_penable)
   , .i_pready  (apbB_pready)
@@ -484,6 +492,8 @@ module tb_nocAsyncIntegration1_top
   , .i_routerToNiReady (routerToNiReady)
   );
   // }}} NOC
+
+
 
 endmodule
 

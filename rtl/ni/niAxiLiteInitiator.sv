@@ -30,7 +30,7 @@ module niAxiLiteInitiator
 , localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1) ?
                                           $clog2(MAX_NI_PER_ROUTER) : 0
   // Fabric payload width; native fields occupy the LSBs, MSBs are zero-padded.
-, parameter int unsigned PAYLOAD_WIDTH = pa_noc::AXI_LITE_PAYLOAD_WIDTH
+, parameter int unsigned PAYLOAD_WIDTH = $bits(pa_noc::ty_AXI_LITE_PAYLOAD)
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
                                           + (COORD_WIDTH * 4)
 )
@@ -67,7 +67,9 @@ module niAxiLiteInitiator
 , input  var logic                    i_niToRouterReady
 
   // NoC router NI — router to initiator (response)
+/* verilator lint_off UNUSEDSIGNAL */
 , input  var logic [PACKET_WIDTH-1:0] i_routerToNi
+/* verilator lint_on UNUSEDSIGNAL */
 , input  var logic                    i_routerToNiValid
 , output var logic                    o_routerToNiReady
 );
@@ -368,10 +370,19 @@ module niAxiLiteInitiator
   // {{{ Capture response payload
   // Response payload uses the same encoding; RDATA occupies the DATA field and
   // the response code occupies the RESP field.
+/* verilator lint_off UNUSEDSIGNAL */
   logic [PAYLOAD_WIDTH-1:0] respPayload;
+/* verilator lint_on UNUSEDSIGNAL */
 
   always_comb
     respPayload = i_routerToNi[PACKET_WIDTH-1 -: PAYLOAD_WIDTH];
+
+/* verilator lint_off UNUSEDSIGNAL */
+  pa_noc::ty_AXI_LITE_PAYLOAD respFields;
+/* verilator lint_on UNUSEDSIGNAL */
+
+  always_comb
+    respFields = respPayload[$bits(pa_noc::ty_AXI_LITE_PAYLOAD)-1:0];
 
   logic [31:0] rdata_q;
   logic [1:0]  resp_q;
@@ -394,7 +405,7 @@ module niAxiLiteInitiator
     if (!i_arst_n)
       rdata_q <= '0;
     else if (respAccept)
-      rdata_q <= respPayload[pa_noc::AXI_DATA_LSB +: 32];
+      rdata_q <= respFields.data;
     else if (noHitStart)
       rdata_q <= '0;
     else
@@ -404,7 +415,7 @@ module niAxiLiteInitiator
     if (!i_arst_n)
       resp_q  <= pa_noc::AXI_RESP_OKAY;
     else if (respAccept)
-      resp_q  <= respPayload[pa_noc::AXI_RESP_LSB +: 2];
+      resp_q  <= respFields.resp;
     else if (noHitStart)
       resp_q  <= pa_noc::AXI_RESP_DECERR;
     else

@@ -16,7 +16,7 @@ module tb_niAxiLiteTarget_top
 
 , localparam int unsigned COORD_WIDTH    = $clog2(GRID_WIDTH)
 , localparam int unsigned NI_ID_WIDTH    = (MAX_NI_PER_ROUTER > 1) ? $clog2(MAX_NI_PER_ROUTER) : 0
-, localparam int unsigned PAYLOAD_WIDTH  = pa_noc::AXI_LITE_PAYLOAD_WIDTH
+, localparam int unsigned PAYLOAD_WIDTH  = $bits(pa_noc::ty_AXI_LITE_PAYLOAD)
 , localparam int unsigned PACKET_WIDTH   = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH) + (COORD_WIDTH * 4)
 )
 ( input  var logic i_clk
@@ -139,7 +139,9 @@ module tb_niAxiLiteTarget_top
   // Always ready to accept AW/W/AR. Writes store into a 4-entry register file
   // (addr bits [3:2] select). Reads return the stored value. Responses OKAY.
   logic [31:0] slave_reg [0:3];
+/* verilator lint_off UNUSEDSIGNAL */
   logic [31:0] awaddr_q;
+/* verilator lint_on UNUSEDSIGNAL */
   logic        bpending_q;
   logic [31:0] rdata_q;
   logic        rpending_q;

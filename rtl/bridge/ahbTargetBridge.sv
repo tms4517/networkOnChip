@@ -16,7 +16,7 @@ module ahbTargetBridge
 #(parameter int unsigned GRID_WIDTH        = 4
 , parameter int unsigned MY_ROW            = 0
 , parameter int unsigned MY_COL            = 0
-, parameter int unsigned PAYLOAD_WIDTH     = pa_noc::AXI_LITE_PAYLOAD_WIDTH
+, parameter int unsigned PAYLOAD_WIDTH     = $bits(pa_noc::ty_AXI_LITE_PAYLOAD)
 
 , localparam int unsigned COORD_WIDTH      = $clog2(GRID_WIDTH)
 , localparam int unsigned PROTOCOL_WIDTH   = pa_noc::PROTOCOL_WIDTH
@@ -174,7 +174,6 @@ module ahbTargetBridge
                           };
 
   logic [31:0] axi_awaddr, axi_wdata, axi_araddr, axi_rdata;
-  logic [3:0]  axi_wstrb;
   logic [1:0]  axi_bresp, axi_rresp;
   logic axi_awvalid, axi_awready, axi_wvalid, axi_wready;
   logic axi_bvalid, axi_bready, axi_arvalid, axi_arready;
@@ -198,7 +197,9 @@ module ahbTargetBridge
   , .o_awvalid (axi_awvalid)
   , .i_awready (axi_awready)
   , .o_wdata   (axi_wdata)
-  , .o_wstrb   (axi_wstrb)
+/* verilator lint_off PINCONNECTEMPTY */
+  , .o_wstrb   () // AHB-Lite has no write strobes.
+/* verilator lint_on PINCONNECTEMPTY */
   , .o_wvalid  (axi_wvalid)
   , .i_wready  (axi_wready)
   , .i_bresp   (axi_bresp)
@@ -228,7 +229,6 @@ module ahbTargetBridge
   , .i_awvalid (axi_awvalid)
   , .o_awready (axi_awready)
   , .i_wdata   (axi_wdata)
-  , .i_wstrb   (axi_wstrb)
   , .i_wvalid  (axi_wvalid)
   , .o_wready  (axi_wready)
   , .o_bresp   (axi_bresp)
@@ -315,7 +315,6 @@ module ahbTargetBridge
                           };
 
   logic [31:0] apb_paddr, apb_pwdata, apb_prdata;
-  logic [3:0]  apb_pstrb;
   logic        apb_pwrite, apb_psel, apb_penable, apb_pready, apb_pslverr;
 
   logic [31:0] apbBr_haddr, apbBr_hwdata;
@@ -335,7 +334,9 @@ module ahbTargetBridge
   , .o_paddr   (apb_paddr)
   , .o_pwdata  (apb_pwdata)
   , .o_pwrite  (apb_pwrite)
-  , .o_pstrb   (apb_pstrb)
+/* verilator lint_off PINCONNECTEMPTY */
+  , .o_pstrb   () // AHB-Lite has no write strobes.
+/* verilator lint_on PINCONNECTEMPTY */
   , .o_psel    (apb_psel)
   , .o_penable (apb_penable)
   , .i_pready  (apb_pready)
@@ -357,7 +358,6 @@ module ahbTargetBridge
   , .i_paddr   (apb_paddr)
   , .i_pwdata  (apb_pwdata)
   , .i_pwrite  (apb_pwrite)
-  , .i_pstrb   (apb_pstrb)
   , .i_psel    (apb_psel)
   , .i_penable (apb_penable)
   , .o_pready  (apb_pready)

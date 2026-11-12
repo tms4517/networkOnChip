@@ -56,7 +56,7 @@ $(WAVEFORM): ./obj_dir/V$(TOP_MODULE)
 $(STAMP): $(TB_SV) $(TB_CPP) $(ASSERT_SV)
 	@echo
 	@echo "### VERILATING ###"
-	verilator -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-TIMESCALEMOD -Wno-SYNCASYNCNET --assert --trace --x-assign unique --x-initial unique -cc \
+	verilator -Wall -Wno-TIMESCALEMOD -Wno-SYNCASYNCNET --assert --trace --x-assign unique --x-initial unique -cc \
 	-F $(NOC_FILE_LIST) $(ASSERT_SV) $(TB_SV) \
 	--top-module $(TOP_MODULE) --exe $(TB_CPP) \
 	$(VERILATOR_CFLAGS) \

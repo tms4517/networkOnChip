@@ -170,7 +170,7 @@ forwards, and each port is popped after a bounded number of forwards.
 6. Liveness L1.
 7. Coverage: stimuli and COI on `u_dut` ≈ 100%.
 
-## 7. Results (2026-11-10, JasperGold 2026.09p001)
+## 7. Results (2026-11-11, JasperGold 2026.09p001, after F-1 fix)
 
 Re-run with `make formalRouterTb`; logs in `logs/formalRouterTb/`
 (`jg.log`, `router_fv_summary.rpt`, `router_cov.rpt`).
@@ -180,19 +180,19 @@ Re-run with `make formalRouterTb`; logs in `logs/formalRouterTb/`
 | Output interface | O1, O2 (x5), O3 | Proven |
 | XY routing | X1–X5 | Proven |
 | Input FIFOs | F1, F2 (x5), F3 (x5) | Proven |
-| Arbitration | R1, R2, R4 (x5) | Proven |
-| Arbitration | **R3 (x5) strict round-robin** | **CEX (13–15 cycles) — RTL finding F-1** |
+| Arbitration | R1, R2, R3 (x5), R4 (x5) | Proven |
 | Helpers | H1 (x5), H2 (x5), H3, D1 | Proven |
 | Data integrity | D2 | Proven |
 | Work conserving | L1a, L1b | Proven |
 | Liveness | L1 | Undetermined at the 10 min limit (no CEX, bounded to 80 cycles); covered by L1a + L1b + R4 + O2 + A3 |
 | Covers | C1–C5 | All covered |
-| Covers | C6 wait depth 5–8 | Covered (all ports) |
-| Covers | C6 wait depth 9 | Unreachable (all ports) |
+| Covers | C6 wait depth 5–9 | Unreachable (all ports): true round-robin |
 
 All safety properties prove in under 2 s each.
 
-### F-1: round-robin arbiter grants each port twice in a row
+### F-1: round-robin arbiter grants each port twice in a row (FIXED)
+
+Before the fix R3 failed (CEX 13–15 cycles) and C6 covered wait depth 8.
 
 `roundRobinArbiter` computes the next grant (`grant_d`) from `mask_q`, but on
 an ack `mask_q` only advances to the mask after the *previous* grant
@@ -206,9 +206,10 @@ moves on. With all five FIFOs busy the grant order is 0,0,1,1,2,2,3,3,4,4,...
   client becomes highest priority") is not what the RTL does.
 - A side effect: when the acked FIFO held only one packet the re-grant points
   at an empty FIFO, costing one dead cycle before re-arbitration.
-- Suggested fix (not applied): pick the next grant using the advanced mask,
-  e.g. `maskedReq = i_request & mask_d;` in `roundRobinArbiter`. R3 should then
-  prove and R4 can be tightened to N-1.
+- Fix (2026-11-11): `maskedReq = i_request & mask_d;` in `roundRobinArbiter`,
+  so the next grant is picked with the mask after the current grant. R3 now
+  proves on all ports and wait depths above N-1 are unreachable. All runnable
+  directed TBs still pass.
 
 ## 8. Open items / notes
 

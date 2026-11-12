@@ -201,9 +201,12 @@ module tb_nocBridgeIntegration3_top
   logic                  per_routerToNiReady;
 
   logic [31:0] per_awaddr; logic per_awvalid, per_awready;
-  logic [31:0] per_wdata;  logic [3:0] per_wstrb; logic per_wvalid, per_wready;
+  logic [31:0] per_wdata;  logic per_wvalid, per_wready;
   logic [1:0]  per_bresp;  logic per_bvalid, per_bready;
-  logic [31:0] per_araddr; logic per_arvalid, per_arready;
+/* verilator lint_off UNUSEDSIGNAL */
+  logic [31:0] per_araddr;
+/* verilator lint_on UNUSEDSIGNAL */
+  logic        per_arvalid, per_arready;
   logic [31:0] per_rdata;  logic [1:0] per_rresp; logic per_rvalid, per_rready;
 
   always_comb per_niToRouterReady = niToRouterReady[PER_ROW][PER_COL];
@@ -220,7 +223,10 @@ module tb_nocBridgeIntegration3_top
   , .o_niToRouter (per_niToRouter), .o_niToRouterValid (per_niToRouterValid)
   , .i_niToRouterReady (per_niToRouterReady)
   , .o_awaddr (per_awaddr), .o_awvalid (per_awvalid), .i_awready (per_awready)
-  , .o_wdata (per_wdata), .o_wstrb (per_wstrb), .o_wvalid (per_wvalid), .i_wready (per_wready)
+/* verilator lint_off PINCONNECTEMPTY */
+  , .o_wstrb ()
+/* verilator lint_on PINCONNECTEMPTY */
+  , .o_wdata (per_wdata), .o_wvalid (per_wvalid), .i_wready (per_wready)
   , .i_bresp (per_bresp), .i_bvalid (per_bvalid), .o_bready (per_bready)
   , .o_araddr (per_araddr), .o_arvalid (per_arvalid), .i_arready (per_arready)
   , .i_rdata (per_rdata), .i_rresp (per_rresp), .i_rvalid (per_rvalid), .o_rready (per_rready)
@@ -228,7 +234,9 @@ module tb_nocBridgeIntegration3_top
 
   // Simple single-outstanding AXI4-Lite slave: 4 word registers.
   logic [31:0] slave_reg [0:3];
+/* verilator lint_off UNUSEDSIGNAL */
   logic [31:0] awaddr_q;
+/* verilator lint_on UNUSEDSIGNAL */
   logic        bpending_q;
   logic [31:0] rdata_q;
   logic        rpending_q;

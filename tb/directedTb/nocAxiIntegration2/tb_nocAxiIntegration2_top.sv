@@ -35,7 +35,7 @@ module tb_nocAxiIntegration2_top
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
 , localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1)
                                           ? $clog2(MAX_NI_PER_ROUTER) : 0
-, localparam int unsigned PAYLOAD_WIDTH = pa_noc::AXI_LITE_PAYLOAD_WIDTH
+, localparam int unsigned PAYLOAD_WIDTH = $bits(pa_noc::ty_AXI_LITE_PAYLOAD)
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
                                           + (COORD_WIDTH * 4)
 )
@@ -263,7 +263,9 @@ module tb_nocAxiIntegration2_top
   );
 
   logic [31:0] slaveA_reg [0:3];
+/* verilator lint_off UNUSEDSIGNAL */
   logic [31:0] awaddrA_q;
+/* verilator lint_on UNUSEDSIGNAL */
   logic        bpendingA_q;
   logic [31:0] rdataA_q;
   logic        rpendingA_q;
@@ -360,7 +362,9 @@ module tb_nocAxiIntegration2_top
   );
 
   logic [31:0] slaveB_reg [0:3];
+/* verilator lint_off UNUSEDSIGNAL */
   logic [31:0] awaddrB_q;
+/* verilator lint_on UNUSEDSIGNAL */
   logic        bpendingB_q;
   logic [31:0] rdataB_q;
   logic        rpendingB_q;

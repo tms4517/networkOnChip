@@ -43,7 +43,7 @@ sim: ./obj_dir/V$(TOP_MODULE)
 $(STAMP): $(TB_SV) $(TB_CPP)
 	@echo
 	@echo "### VERILATING ###"
-	verilator -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM --x-assign unique --x-initial unique -cc \
+	verilator -Wall -Wno-UNUSEDPARAM --x-assign unique --x-initial unique -cc \
 	$(RTL_SRCS) $(TB_SV) \
 	--top-module $(TOP_MODULE) --exe $(TB_CPP) \
 	$(VERILATOR_CFLAGS) \

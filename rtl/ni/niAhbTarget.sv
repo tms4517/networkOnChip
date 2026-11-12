@@ -30,7 +30,7 @@ module niAhbTarget
 , localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1) ?
                                           $clog2(MAX_NI_PER_ROUTER) : 0
   // Fabric payload width; native fields occupy the LSBs, MSBs are zero-padded.
-, parameter int unsigned PAYLOAD_WIDTH = pa_noc::AHB_PAYLOAD_WIDTH
+, parameter int unsigned PAYLOAD_WIDTH = $bits(pa_noc::ty_AHB_PAYLOAD)
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
                                           + (COORD_WIDTH * 4)
 )
@@ -49,7 +49,9 @@ module niAhbTarget
 , input  var logic        i_hresp
 
   // NoC router NI — router to target (request)
+/* verilator lint_off UNUSEDSIGNAL */
 , input  var logic [PACKET_WIDTH-1:0] i_routerToNi
+/* verilator lint_on UNUSEDSIGNAL */
 , input  var logic                    i_routerToNiValid
 , output var logic                    o_routerToNiReady
 
@@ -77,10 +79,19 @@ module niAhbTarget
     reqAccept = i_routerToNiValid && o_routerToNiReady;
 
   // {{{ Unpack AHB request payload
+/* verilator lint_off UNUSEDSIGNAL */
   logic [PAYLOAD_WIDTH-1:0] reqPayload;
+/* verilator lint_on UNUSEDSIGNAL */
 
   always_comb
     reqPayload = i_routerToNi[PACKET_WIDTH-1 -: PAYLOAD_WIDTH];
+
+/* verilator lint_off UNUSEDSIGNAL */
+  pa_noc::ty_AHB_PAYLOAD reqFields;
+/* verilator lint_on UNUSEDSIGNAL */
+
+  always_comb
+    reqFields = reqPayload[$bits(pa_noc::ty_AHB_PAYLOAD)-1:0];
 
   logic [31:0] haddr_d;
   logic [31:0] hwdata_d;
@@ -88,16 +99,16 @@ module niAhbTarget
   logic [2:0]  hsize_d;
 
   always_comb
-    haddr_d  = reqPayload[pa_noc::AHB_HADDR_LSB +: 32];
+    haddr_d  = reqFields.haddr;
 
   always_comb
-    hwdata_d = reqPayload[pa_noc::AHB_HDATA_LSB +: 32];
+    hwdata_d = reqFields.hdata;
 
   always_comb
-    hwrite_d = reqPayload[pa_noc::AHB_HWRITE_LSB];
+    hwrite_d = reqFields.hwrite;
 
   always_comb
-    hsize_d  = reqPayload[pa_noc::AHB_HSIZE_LSB +: 3];
+    hsize_d  = reqFields.hsize;
   // }}} Unpack AHB request payload
 
   // {{{ Extract source coordinates from incoming packet

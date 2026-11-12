@@ -38,7 +38,6 @@ module mesh
 , input  var logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0]                   i_routerToNiReady
 );
 
-  /* verilator lint_off UNUSED */
   // Inputs to router from neighboring routers
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][PACKET_WIDTH-1:0] northInput;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][PACKET_WIDTH-1:0] southInput;
@@ -46,8 +45,11 @@ module mesh
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][PACKET_WIDTH-1:0] westInput;
 
   // Outputs from router to neighboring routers
+  // North/south outputs at the grid edges have no neighbor.
+/* verilator lint_off UNUSEDSIGNAL */
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][PACKET_WIDTH-1:0] northOutput;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][PACKET_WIDTH-1:0] southOutput;
+/* verilator lint_on UNUSEDSIGNAL */
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][PACKET_WIDTH-1:0] eastOutput;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0][PACKET_WIDTH-1:0] westOutput;
 
@@ -56,21 +58,24 @@ module mesh
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0] southInputValid;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0] eastInputValid;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0] westInputValid;
+/* verilator lint_off UNUSEDSIGNAL */
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0] northOutputValid;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0] southOutputValid;
+/* verilator lint_on UNUSEDSIGNAL */
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0] eastOutputValid;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0] westOutputValid;
 
   // Ready signals (opposite to data direction)
+/* verilator lint_off UNUSEDSIGNAL */
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0] northInputReady;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0] southInputReady;
+/* verilator lint_on UNUSEDSIGNAL */
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0] eastInputReady;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0] westInputReady;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0] northOutputReady;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0] southOutputReady;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0] eastOutputReady;
   logic [GRID_WIDTH-1:0][GRID_WIDTH-1:0] westOutputReady;
-  /* verilator lint_on UNUSED */
 
   // {{{ Tie off edge router input connections
   // North and south edges: iterate over columns

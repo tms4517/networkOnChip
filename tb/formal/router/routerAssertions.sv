@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Tej Sanghavi.
 
 // Properties of the NoC `router`. Each property is expressed with auxiliary
-// modelling logic and a single-cycle boolean (`assert_*`, `assume_*`,
-// `cover_*`) checked by a concurrent assertion. The only temporal operators are
-// in the liveness section, which needs `s_eventually`.
+// modelling logic and a single-cycle boolean checked by a concurrent assertion.
+// `assert_*` booleans are the failing condition (high = violation) and are
+// checked with `assert property (!assert_*)`; `assume_*` and `cover_*` are
+// positive. The only temporal operators are in the liveness section.
 //
 // The five router ports are packed into arrays indexed by
 // `pa_noc::ty_DIRECTION` (NI, NORTH, SOUTH, EAST, WEST) so per-port properties
@@ -331,11 +332,11 @@ module routerAssertions
   logic assert_outValidOneHot;
 
   always_comb
-    assert_outValidOneHot = |{!i_arst_n
-                            , $onehot0(i_outValid)
+    assert_outValidOneHot = &{i_arst_n
+                            , !$onehot0(i_outValid)
                             };
 
-  outValidOneHot: assert property (@(posedge i_clk) assert_outValidOneHot);
+  outValidOneHot: assert property (@(posedge i_clk) !assert_outValidOneHot);
 
   // Valid/ready: once presented, an output holds valid and data stable until
   // the downstream accepts it.
@@ -345,13 +346,13 @@ module routerAssertions
 
     always_comb
       assert_outStableWhileStalled =
-        |{!i_arst_n
-        , !(outValid_q[i] && !outReady_q[i])
-        , i_outValid[i] && (i_outData[i] == outData_q[i])
+        &{i_arst_n
+        , outValid_q[i] && !outReady_q[i]
+        , !(i_outValid[i] && (i_outData[i] == outData_q[i]))
         };
 
     outStableWhileStalled:
-      assert property (@(posedge i_clk) assert_outStableWhileStalled);
+      assert property (@(posedge i_clk) !assert_outStableWhileStalled);
 
   end: genAssertOutStable
 
@@ -360,13 +361,13 @@ module routerAssertions
   logic assert_noBackToBackForward;
 
   always_comb
-    assert_noBackToBackForward = |{!i_arst_n
-                                , !forwarded
-                                , !forwarded_q
+    assert_noBackToBackForward = &{i_arst_n
+                                , forwarded
+                                , forwarded_q
                                 };
 
   noBackToBackForward:
-    assert property (@(posedge i_clk) assert_noBackToBackForward);
+    assert property (@(posedge i_clk) !assert_noBackToBackForward);
 
   // }}} Output interface assertions
 
@@ -385,12 +386,12 @@ module routerAssertions
   logic assert_niRouteCorrect;
 
   always_comb
-    assert_niRouteCorrect = |{!i_arst_n
-                            , !i_outValid[NI]
-                            , (niRow == ROUTER_ROW) && (niCol == ROUTER_COL)
+    assert_niRouteCorrect = &{i_arst_n
+                            , i_outValid[NI]
+                            , !((niRow == ROUTER_ROW) && (niCol == ROUTER_COL))
                             };
 
-  niRouteCorrect: assert property (@(posedge i_clk) assert_niRouteCorrect);
+  niRouteCorrect: assert property (@(posedge i_clk) !assert_niRouteCorrect);
 
   logic [COORD_WIDTH-1:0] northRow, northCol;
 
@@ -404,13 +405,13 @@ module routerAssertions
 
   always_comb
     assert_northRouteCorrect =
-      |{!i_arst_n
-      , !i_outValid[NORTH]
-      , (northCol == ROUTER_COL) && (northRow < ROUTER_ROW)
+      &{i_arst_n
+      , i_outValid[NORTH]
+      , !((northCol == ROUTER_COL) && (northRow < ROUTER_ROW))
       };
 
   northRouteCorrect:
-    assert property (@(posedge i_clk) assert_northRouteCorrect);
+    assert property (@(posedge i_clk) !assert_northRouteCorrect);
 
   logic [COORD_WIDTH-1:0] southRow, southCol;
 
@@ -424,13 +425,13 @@ module routerAssertions
 
   always_comb
     assert_southRouteCorrect =
-      |{!i_arst_n
-      , !i_outValid[SOUTH]
-      , (southCol == ROUTER_COL) && (southRow > ROUTER_ROW)
+      &{i_arst_n
+      , i_outValid[SOUTH]
+      , !((southCol == ROUTER_COL) && (southRow > ROUTER_ROW))
       };
 
   southRouteCorrect:
-    assert property (@(posedge i_clk) assert_southRouteCorrect);
+    assert property (@(posedge i_clk) !assert_southRouteCorrect);
 
   logic [COORD_WIDTH-1:0] eastCol;
 
@@ -440,13 +441,13 @@ module routerAssertions
   logic assert_eastRouteCorrect;
 
   always_comb
-    assert_eastRouteCorrect = |{!i_arst_n
-                              , !i_outValid[EAST]
-                              , (eastCol > ROUTER_COL)
+    assert_eastRouteCorrect = &{i_arst_n
+                              , i_outValid[EAST]
+                              , (eastCol <= ROUTER_COL)
                               };
 
   eastRouteCorrect:
-    assert property (@(posedge i_clk) assert_eastRouteCorrect);
+    assert property (@(posedge i_clk) !assert_eastRouteCorrect);
 
   logic [COORD_WIDTH-1:0] westCol;
 
@@ -456,13 +457,13 @@ module routerAssertions
   logic assert_westRouteCorrect;
 
   always_comb
-    assert_westRouteCorrect = |{!i_arst_n
-                              , !i_outValid[WEST]
-                              , (westCol < ROUTER_COL)
+    assert_westRouteCorrect = &{i_arst_n
+                              , i_outValid[WEST]
+                              , (westCol >= ROUTER_COL)
                               };
 
   westRouteCorrect:
-    assert property (@(posedge i_clk) assert_westRouteCorrect);
+    assert property (@(posedge i_clk) !assert_westRouteCorrect);
 
   // }}} XY routing assertions
 
@@ -473,13 +474,13 @@ module routerAssertions
   logic assert_forwardPopsOneFifo;
 
   always_comb
-    assert_forwardPopsOneFifo = |{!i_arst_n
-                                , $onehot0(i_fifoReadEn)
-                                  && ((|i_fifoReadEn) == forwarded)
+    assert_forwardPopsOneFifo = &{i_arst_n
+                                , !$onehot0(i_fifoReadEn)
+                                  || ((|i_fifoReadEn) != forwarded)
                                 };
 
   forwardPopsOneFifo:
-    assert property (@(posedge i_clk) assert_forwardPopsOneFifo);
+    assert property (@(posedge i_clk) !assert_forwardPopsOneFifo);
 
   for (genvar i = 0; i < NUM_PORTS; i++) begin: genAssertFifo
 
@@ -487,13 +488,13 @@ module routerAssertions
     logic assert_popOnlyNonEmpty;
 
     always_comb
-      assert_popOnlyNonEmpty = |{!i_arst_n
-                              , !i_fifoReadEn[i]
-                              , hasPacket[i]
+      assert_popOnlyNonEmpty = &{i_arst_n
+                              , i_fifoReadEn[i]
+                              , !hasPacket[i]
                               };
 
     popOnlyNonEmpty:
-      assert property (@(posedge i_clk) assert_popOnlyNonEmpty);
+      assert property (@(posedge i_clk) !assert_popOnlyNonEmpty);
 
     // Ready is deasserted exactly when the FIFO is full (no overflow, no
     // needless back-pressure).
@@ -501,12 +502,12 @@ module routerAssertions
 
     always_comb
       assert_readyMatchesOccupancy =
-        |{!i_arst_n
-        , i_inReady[i] == (occupancy_q[i] < OCCUPANCY_WIDTH'(DEPTH))
+        &{i_arst_n
+        , i_inReady[i] != (occupancy_q[i] < OCCUPANCY_WIDTH'(DEPTH))
         };
 
     readyMatchesOccupancy:
-      assert property (@(posedge i_clk) assert_readyMatchesOccupancy);
+      assert property (@(posedge i_clk) !assert_readyMatchesOccupancy);
 
   end: genAssertFifo
 
@@ -517,26 +518,26 @@ module routerAssertions
   logic assert_grantOneHot;
 
   always_comb
-    assert_grantOneHot = |{!i_arst_n
-                        , $onehot0(i_grant)
+    assert_grantOneHot = &{i_arst_n
+                        , !$onehot0(i_grant)
                         };
 
-  grantOneHot: assert property (@(posedge i_clk) assert_grantOneHot);
+  grantOneHot: assert property (@(posedge i_clk) !assert_grantOneHot);
 
   // A grant to a port that still has a packet is held until that packet is
   // forwarded, so the registered output never sees its packet change.
   logic assert_grantHeldUntilAck;
 
   always_comb
-    assert_grantHeldUntilAck = |{!i_arst_n
-                              , (grant_q == '0)
-                              , !(|(grant_q & hasPacket_q))
-                              , forwarded_q
-                              , (i_grant == grant_q)
+    assert_grantHeldUntilAck = &{i_arst_n
+                              , (grant_q != '0)
+                              , |(grant_q & hasPacket_q)
+                              , !forwarded_q
+                              , (i_grant != grant_q)
                               };
 
   grantHeldUntilAck:
-    assert property (@(posedge i_clk) assert_grantHeldUntilAck);
+    assert property (@(posedge i_clk) !assert_grantHeldUntilAck);
 
   // Round-robin fairness: a waiting port is granted before more than
   // NUM_PORTS-1 other packets are forwarded.
@@ -546,11 +547,11 @@ module routerAssertions
 
     always_comb
       assert_roundRobinFair =
-        |{!i_arst_n
-        , (waitAcks_q[i] <= WAIT_WIDTH'(NUM_PORTS - 1))
+        &{i_arst_n
+        , (waitAcks_q[i] > WAIT_WIDTH'(NUM_PORTS - 1))
         };
 
-    roundRobinFair: assert property (@(posedge i_clk) assert_roundRobinFair);
+    roundRobinFair: assert property (@(posedge i_clk) !assert_roundRobinFair);
 
     // Starvation freedom at the bound the RTL actually meets: the mask lags
     // the grant by one ack, so a port can be granted twice in a row.
@@ -558,11 +559,11 @@ module routerAssertions
 
     always_comb
       assert_starvationFree =
-        |{!i_arst_n
-        , (waitAcks_q[i] <= WAIT_WIDTH'(2 * (NUM_PORTS - 1)))
+        &{i_arst_n
+        , (waitAcks_q[i] > WAIT_WIDTH'(2 * (NUM_PORTS - 1)))
         };
 
-    starvationFree: assert property (@(posedge i_clk) assert_starvationFree);
+    starvationFree: assert property (@(posedge i_clk) !assert_starvationFree);
 
   end: genAssertFairness
 
@@ -581,12 +582,12 @@ module routerAssertions
     logic assert_occupancyMatchesPointers;
 
     always_comb
-      assert_occupancyMatchesPointers = |{!i_arst_n
-                                        , (occupancy_q[i] == pointerOccupancy)
+      assert_occupancyMatchesPointers = &{i_arst_n
+                                        , (occupancy_q[i] != pointerOccupancy)
                                         };
 
     occupancyMatchesPointers:
-      assert property (@(posedge i_clk) assert_occupancyMatchesPointers);
+      assert property (@(posedge i_clk) !assert_occupancyMatchesPointers);
 
   end: genAssertOccupancyModel
 
@@ -598,13 +599,13 @@ module routerAssertions
 
     always_comb
       assert_outMatchesArbiter =
-        |{!i_arst_n
-        , !i_outValid[i]
-        , i_arbiterPacketIsValid && (i_outData[i] == i_arbiterPacket)
+        &{i_arst_n
+        , i_outValid[i]
+        , !(i_arbiterPacketIsValid && (i_outData[i] == i_arbiterPacket))
         };
 
     outMatchesArbiter:
-      assert property (@(posedge i_clk) assert_outMatchesArbiter);
+      assert property (@(posedge i_clk) !assert_outMatchesArbiter);
 
   end: genAssertOutMatchesArbiter
 
@@ -620,35 +621,35 @@ module routerAssertions
 
   always_comb
     assert_trackedInMemory =
-      |{!i_arst_n
-      , !tracking_q
-      , (i_fifoMem[trackedPort_q][trackedSlot] == trackedPacket_q)
+      &{i_arst_n
+      , tracking_q
+      , (i_fifoMem[trackedPort_q][trackedSlot] != trackedPacket_q)
       };
 
-  trackedInMemory: assert property (@(posedge i_clk) assert_trackedInMemory);
+  trackedInMemory: assert property (@(posedge i_clk) !assert_trackedInMemory);
 
   // Helper invariant: while tracked, the packet is still inside its FIFO.
   logic assert_trackedInFifo;
 
   always_comb
-    assert_trackedInFifo = |{!i_arst_n
-                          , !tracking_q
-                          , (ahead_q < occupancy_q[trackedPort_q])
+    assert_trackedInFifo = &{i_arst_n
+                          , tracking_q
+                          , (ahead_q >= occupancy_q[trackedPort_q])
                           };
 
-  trackedInFifo: assert property (@(posedge i_clk) assert_trackedInFifo);
+  trackedInFifo: assert property (@(posedge i_clk) !assert_trackedInFifo);
 
   // End to end: the tracked packet leaves the router unmodified, in FIFO order.
   logic assert_trackedPacketIntegrity;
 
   always_comb
-    assert_trackedPacketIntegrity = |{!i_arst_n
-                                    , !trackedPop
-                                    , (forwardedPacket == trackedPacket_q)
+    assert_trackedPacketIntegrity = &{i_arst_n
+                                    , trackedPop
+                                    , (forwardedPacket != trackedPacket_q)
                                     };
 
   trackedPacketIntegrity:
-    assert property (@(posedge i_clk) assert_trackedPacketIntegrity);
+    assert property (@(posedge i_clk) !assert_trackedPacketIntegrity);
 
   // }}} Data integrity assertions
 
@@ -663,28 +664,28 @@ module routerAssertions
 
   always_comb
     assert_arbiterWorkConserving =
-      |{!i_arst_n
-      , !(|hasPacket_q)
-      , forwarded_q
-      , i_arbiterPacketIsValid
+      &{i_arst_n
+      , |hasPacket_q
+      , !forwarded_q
+      , !i_arbiterPacketIsValid
       };
 
   arbiterWorkConserving:
-    assert property (@(posedge i_clk) assert_arbiterWorkConserving);
+    assert property (@(posedge i_clk) !assert_arbiterWorkConserving);
 
   // A packet presented by the arbiter reaches a registered output next cycle,
   // unless it was just forwarded.
   logic assert_outputWorkConserving;
 
   always_comb
-    assert_outputWorkConserving = |{!i_arst_n
-                                  , !arbiterPacketIsValid_q
-                                  , forwarded_q
-                                  , (|i_outValid)
+    assert_outputWorkConserving = &{i_arst_n
+                                  , arbiterPacketIsValid_q
+                                  , !forwarded_q
+                                  , !(|i_outValid)
                                   };
 
   outputWorkConserving:
-    assert property (@(posedge i_clk) assert_outputWorkConserving);
+    assert property (@(posedge i_clk) !assert_outputWorkConserving);
 
   // Full temporal liveness (may be undetermined within the time limit).
 

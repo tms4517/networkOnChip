@@ -18,10 +18,18 @@ package pa_noc;
   //   PWDATA : pwdata on a write request, prdata on a read response.
   //   PWRITE : 1 = write transaction, 0 = read transaction (echoed in
   //            response).
-  //   PSTRB  : write strobe (unused on reads).
+  //   PSTRB  : write strobe on a request; a read response carries PSLVERR
+  //            in PSTRB[0].
   //
   // Width = 32 (PADDR) + 32 (PWDATA) + 1 (PWRITE) + 4 (PSTRB) = 69 bits.
-  localparam int unsigned APB_PAYLOAD_WIDTH = 69;
+  typedef struct packed {
+    logic [31:0] paddr;
+    logic [31:0] pdata;
+    logic        pwrite;
+    logic [3:0]  pstrb;
+  } ty_APB_PAYLOAD;
+
+  localparam int unsigned APB_PAYLOAD_WIDTH = $bits(ty_APB_PAYLOAD);
   // }}} APB parameters
 
   // {{{ AXI parameters
@@ -40,14 +48,13 @@ package pa_noc;
   //           (AXI: 2'b00 OKAY, 2'b10 SLVERR, 2'b11 DECERR)
   //
   // awprot/arprot are intentionally omitted (single-beat, non-secure access).
-  localparam int unsigned AXI_LITE_PAYLOAD_WIDTH = 71;
-
-  // Field offsets (LSB position) within the AXI4-Lite payload.
-  localparam int unsigned AXI_RESP_LSB  = 0;   // [1:0]
-  localparam int unsigned AXI_WRITE_LSB = 2;   // [2]
-  localparam int unsigned AXI_WSTRB_LSB = 3;   // [6:3]
-  localparam int unsigned AXI_DATA_LSB  = 7;   // [38:7]
-  localparam int unsigned AXI_ADDR_LSB  = 39;  // [70:39]
+  typedef struct packed {
+    logic [31:0] addr;
+    logic [31:0] data;
+    logic [3:0]  wstrb;
+    logic        write;
+    logic [1:0]  resp;
+  } ty_AXI_LITE_PAYLOAD;
 
   // AXI response encodings.
   typedef enum bit [1:0]
@@ -76,23 +83,20 @@ package pa_noc;
   // Only single-beat IDLE/NONSEQ transfers are modelled; hprot/hmastlock and
   // bursts are intentionally omitted.
   // Width = 32 + 32 + 2 + 3 + 1 + 1 = 71 bits.
-  localparam int unsigned AHB_PAYLOAD_WIDTH = 71;
-
-  // Field offsets (LSB position) within the AHB-Lite payload.
-  localparam int unsigned AHB_HRESP_LSB  = 0;   // [0]
-  localparam int unsigned AHB_HWRITE_LSB = 1;   // [1]
-  localparam int unsigned AHB_HSIZE_LSB  = 2;   // [4:2]
-  localparam int unsigned AHB_HTRANS_LSB = 5;   // [6:5]
-  localparam int unsigned AHB_HDATA_LSB  = 7;   // [38:7]
-  localparam int unsigned AHB_HADDR_LSB  = 39;  // [70:39]
+  typedef struct packed {
+    logic [31:0] haddr;
+    logic [31:0] hdata;
+    logic [1:0]  htrans;
+    logic [2:0]  hsize;
+    logic        hwrite;
+    logic        hresp;
+  } ty_AHB_PAYLOAD;
 
   // AHB-Lite HTRANS encodings (only the single-beat transfers are used).
-  localparam bit [1:0] AHB_TRANS_IDLE   = 2'b00;
-  localparam bit [1:0] AHB_TRANS_NONSEQ = 2'b10;
-
-  // AHB-Lite HRESP encodings.
-  localparam bit AHB_RESP_OKAY  = 1'b0;
-  localparam bit AHB_RESP_ERROR = 1'b1;
+  typedef enum logic [1:0]
+  { AHB_TRANS_IDLE   = 2'b00
+  , AHB_TRANS_NONSEQ = 2'b10
+  } ty_AHB_TRANS;
   // }}} AHB parameters
 
   // {{{ Initiator protocol opcode
