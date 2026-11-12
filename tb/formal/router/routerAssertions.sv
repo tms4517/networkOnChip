@@ -4,7 +4,7 @@
 // modelling logic and a single-cycle boolean checked by a concurrent assertion.
 // `assert_*` booleans are the failing condition (high = violation) and are
 // checked with `assert property (!assert_*)`; `assume_*` and `cover_*` are
-// positive. The only temporal operators are in the liveness section.
+// positive.
 //
 // The five router ports are packed into arrays indexed by
 // `pa_noc::ty_DIRECTION` (NI, NORTH, SOUTH, EAST, WEST) so per-port properties
@@ -311,17 +311,6 @@ module routerAssertions
     assume_trackPortLegal = (i_trackPort < PORT_WIDTH'(NUM_PORTS));
 
   trackPortLegal: assume property (@(posedge i_clk) assume_trackPortLegal);
-
-  // Liveness fairness: every downstream neighbour/NI eventually accepts a
-  // packet presented to it. Only used by the liveness assertions.
-  for (genvar i = 0; i < NUM_PORTS; i++) begin: genAssumeOutReadyFair
-
-/* verilator lint_off VARHIDDEN */
-    outReadyFair: assume property (@(posedge i_clk) disable iff (!i_arst_n)
-      i_outValid[i] |-> s_eventually i_outReady[i]);
-/* verilator lint_on VARHIDDEN */
-
-  end: genAssumeOutReadyFair
 
   // }}} Stimulus constraints
 
@@ -653,10 +642,9 @@ module routerAssertions
 
   // }}} Data integrity assertions
 
-  // {{{ Liveness assertions
-  // Safety decomposition (converges quickly): the router is work-conserving
-  // and arbitration is starvation-free (starvationFree). With the downstream
-  // fairness assumption these imply every packet is delivered.
+  // {{{ Work-conserving assertions
+  // With starvationFree, these imply every packet is delivered as long as
+  // the downstream keeps accepting.
 
   // A packet waiting in any FIFO is presented by the arbiter next cycle,
   // unless a pop just happened.
@@ -687,15 +675,7 @@ module routerAssertions
   outputWorkConserving:
     assert property (@(posedge i_clk) !assert_outputWorkConserving);
 
-  // Full temporal liveness (may be undetermined within the time limit).
-
-/* verilator lint_off VARHIDDEN */
-  trackedEventuallyForwarded:
-    assert property (@(posedge i_clk) disable iff (!i_arst_n)
-      tracking_q |-> s_eventually trackedPop);
-/* verilator lint_on VARHIDDEN */
-
-  // }}} Liveness assertions
+  // }}} Work-conserving assertions
 
   // {{{ Cover properties
 

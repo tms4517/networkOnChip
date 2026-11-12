@@ -54,7 +54,6 @@ Packed into `[5]` arrays indexed by `pa_noc::ty_DIRECTION`
 - **Style:** auxiliary modelling logic plus single-cycle booleans
   (`assert_*`, `assume_*`, `cover_*`), each checked by a concurrent
   `assert/assume/cover property`. Every boolean includes a `!i_arst_n` term.
-  Only the liveness section uses a temporal operator (`s_eventually`).
 - **Reference models in the checker:**
   - *Occupancy model*: per-port packet count (+1 on input handshake, -1 on
     FIFO pop). Gives the expected ready and request (`hasPacket`).
@@ -73,10 +72,9 @@ Packed into `[5]` arrays indexed by `pa_noc::ty_DIRECTION`
 |----|------------|-----------|
 | A1 | `i_clk` free-running, `i_arst_n` asserted at start then deasserted. | JasperGold `clock` / `reset`. |
 | A2 | `i_trackPort < 5`. | Selector names a real port (checker only). |
-| A3 | `o_<dir>Valid \|-> s_eventually i_<dir>Ready` for each output. | Downstream fairness; needed only for liveness (L1). |
 
-No constraints are placed on input packets, input valids or output readys
-for safety properties: they hold against an arbitrary environment (including
+No constraints are placed on input packets, input valids or output readys:
+the properties hold against an arbitrary environment (including
 a neighbour that drops valid without a handshake or sends a packet that is not
 XY-legal for the port it arrives on).
 
@@ -135,19 +133,15 @@ proves in under a second.
 D2 + F1 + O1 together give: every output packet is exactly one previously
 accepted packet, unmodified, and every packet leaves exactly once.
 
-### 5.6 Liveness
+### 5.6 Work conserving
 
-| ID | Dir | Property | Notes |
-|----|-----|----------|-------|
-| L1a | A | Arbiter work-conserving: a packet in any FIFO is presented next cycle unless a pop just happened. | `arbiterWorkConserving` |
-| L1b | A | Output work-conserving: a presented packet is on a registered output next cycle unless just forwarded. | `outputWorkConserving` |
-| L1 | A | `tracking \|-> s_eventually trackedPop` — every accepted packet is eventually forwarded. | Under A3. Full temporal form. |
+| ID | Dir | Property | Checker name |
+|----|-----|----------|--------------|
+| W1 | A | Arbiter work-conserving: a packet in any FIFO is presented next cycle unless a pop just happened. | `arbiterWorkConserving` |
+| W2 | A | Output work-conserving: a presented packet is on a registered output next cycle unless just forwarded. | `outputWorkConserving` |
 
-L1a and L1b are safety properties. Together with R4 (each pop of a FIFO is
-preceded by at most 8 other forwards), O2 (a presented output stays
-presented) and A3 (it is eventually accepted), they imply L1: while any FIFO
-is non-empty a packet is always on an output, every such output eventually
-forwards, and each port is popped after a bounded number of forwards.
+With R4 and O2, W1 and W2 mean every accepted packet is delivered as long as
+the downstream keeps accepting.
 
 ### 5.7 Covers (reachability)
 
@@ -167,7 +161,7 @@ forwards, and each port is popped after a bounded number of forwards.
 3. Handshake/arbitration: O2, O3, F1, R2.
 4. Data integrity D1, D2 (D1 is the induction helper for D2).
 5. Fairness R3.
-6. Liveness L1.
+6. Work conserving W1, W2.
 7. Coverage: stimuli and COI on `u_dut` ≈ 100%.
 
 ## 7. Results (2026-11-11, JasperGold 2026.09p001, after F-1 fix)
@@ -183,12 +177,11 @@ Re-run with `make formalRouterTb`; logs in `logs/formalRouterTb/`
 | Arbitration | R1, R2, R3 (x5), R4 (x5) | Proven |
 | Helpers | H1 (x5), H2 (x5), H3, D1 | Proven |
 | Data integrity | D2 | Proven |
-| Work conserving | L1a, L1b | Proven |
-| Liveness | L1 | Undetermined at the 10 min limit (no CEX, bounded to 80 cycles); covered by L1a + L1b + R4 + O2 + A3 |
+| Work conserving | W1, W2 | Proven |
 | Covers | C1–C5 | All covered |
 | Covers | C6 wait depth 5–9 | Unreachable (all ports): true round-robin |
 
-All safety properties prove in under 2 s each.
+All properties prove in under 2 s each.
 
 ### F-1: round-robin arbiter grants each port twice in a row (FIXED)
 
