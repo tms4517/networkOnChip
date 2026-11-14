@@ -3,9 +3,10 @@
 # NI-ID demux) at NUM_NI = 3.
 
 TOP_MODULE = tb_niRouterPort_top
-RTL_PATH = ../../../rtl
-TB_SV = tb_niRouterPort_top.sv
-TB_CPP = tb_niRouterPort.cpp
+TB_DIR ?= $(CURDIR)/
+RTL_PATH = $(TB_DIR)../../../rtl
+TB_SV = $(TB_DIR)tb_niRouterPort_top.sv
+TB_CPP = $(TB_DIR)tb_niRouterPort.cpp
 STAMP = .stamp.verilate
 
 GRID_WIDTH ?= 4
@@ -42,7 +43,7 @@ sim: ./obj_dir/V$(TOP_MODULE)
 $(STAMP): $(TB_SV) $(TB_CPP)
 	@echo
 	@echo "### VERILATING ###"
-	verilator -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM --x-assign unique --x-initial unique -cc \
+	verilator -Wall -Wno-UNUSEDPARAM --x-assign unique --x-initial unique -cc \
 	$(RTL_SRCS) $(TB_SV) \
 	--top-module $(TOP_MODULE) --exe $(TB_CPP) \
 	$(VERILATOR_CFLAGS) \

@@ -18,7 +18,9 @@ module ahbToAxiLiteBridge
 , input  var logic [31:0] i_haddr
 , input  var logic        i_hwrite
 , input  var logic [2:0]  i_hsize
+/* verilator lint_off UNUSEDSIGNAL */
 , input  var logic [1:0]  i_htrans
+/* verilator lint_on UNUSEDSIGNAL */
 , input  var logic [31:0] i_hwdata
 , output var logic        o_hreadyout
 , output var logic        o_hresp

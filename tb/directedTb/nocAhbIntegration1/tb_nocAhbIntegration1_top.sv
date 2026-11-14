@@ -27,7 +27,7 @@ module tb_nocAhbIntegration1_top
 , parameter int unsigned TGTB_COL   = 0
 
 , localparam int unsigned COORD_WIDTH   = $clog2(GRID_WIDTH)
-, localparam int unsigned PAYLOAD_WIDTH = pa_noc::AHB_PAYLOAD_WIDTH
+, localparam int unsigned PAYLOAD_WIDTH = $bits(pa_noc::ty_AHB_PAYLOAD)
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (COORD_WIDTH * 4)
 )
 ( input  var logic i_clk
@@ -201,11 +201,14 @@ module tb_nocAhbIntegration1_top
   logic                    routerToNiValid_tA;
   logic                    routerToNiReady_tA;
 
+/* verilator lint_off UNUSEDSIGNAL */
   logic [31:0] ahbA_haddr;
+/* verilator lint_on UNUSEDSIGNAL */
   logic [31:0] ahbA_hwdata;
   logic        ahbA_hwrite;
-  logic [2:0]  ahbA_hsize;
+/* verilator lint_off UNUSEDSIGNAL */
   logic [1:0]  ahbA_htrans;
+/* verilator lint_on UNUSEDSIGNAL */
   logic        ahbA_hsel;
   logic [31:0] ahbA_hrdata;
   logic        ahbA_hready;
@@ -231,7 +234,9 @@ module tb_nocAhbIntegration1_top
   , .o_hsel    (ahbA_hsel)
   , .o_haddr   (ahbA_haddr)
   , .o_hwrite  (ahbA_hwrite)
-  , .o_hsize   (ahbA_hsize)
+/* verilator lint_off PINCONNECTEMPTY */
+  , .o_hsize   ()
+/* verilator lint_on PINCONNECTEMPTY */
   , .o_htrans  (ahbA_htrans)
   , .o_hwdata  (ahbA_hwdata)
   , .i_hrdata  (ahbA_hrdata)
@@ -290,11 +295,14 @@ module tb_nocAhbIntegration1_top
   logic                    routerToNiValid_tB;
   logic                    routerToNiReady_tB;
 
+/* verilator lint_off UNUSEDSIGNAL */
   logic [31:0] ahbB_haddr;
+/* verilator lint_on UNUSEDSIGNAL */
   logic [31:0] ahbB_hwdata;
   logic        ahbB_hwrite;
-  logic [2:0]  ahbB_hsize;
+/* verilator lint_off UNUSEDSIGNAL */
   logic [1:0]  ahbB_htrans;
+/* verilator lint_on UNUSEDSIGNAL */
   logic        ahbB_hsel;
   logic [31:0] ahbB_hrdata;
   logic        ahbB_hready;
@@ -320,7 +328,9 @@ module tb_nocAhbIntegration1_top
   , .o_hsel    (ahbB_hsel)
   , .o_haddr   (ahbB_haddr)
   , .o_hwrite  (ahbB_hwrite)
-  , .o_hsize   (ahbB_hsize)
+/* verilator lint_off PINCONNECTEMPTY */
+  , .o_hsize   ()
+/* verilator lint_on PINCONNECTEMPTY */
   , .o_htrans  (ahbB_htrans)
   , .o_hwdata  (ahbB_hwdata)
   , .i_hrdata  (ahbB_hrdata)
@@ -420,6 +430,8 @@ module tb_nocAhbIntegration1_top
   , .i_routerToNiReady (routerToNiReady)
   );
   // }}} NOC
+
+
 
 endmodule
 

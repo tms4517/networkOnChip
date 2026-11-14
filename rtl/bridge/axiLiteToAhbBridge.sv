@@ -17,7 +17,6 @@ module axiLiteToAhbBridge
 , input  var logic        i_awvalid
 , output var logic        o_awready
 , input  var logic [31:0] i_wdata
-, input  var logic [3:0]  i_wstrb
 , input  var logic        i_wvalid
 , output var logic        o_wready
 , output var logic [1:0]  o_bresp

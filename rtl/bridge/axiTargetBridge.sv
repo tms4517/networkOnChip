@@ -16,7 +16,7 @@ module axiTargetBridge
 #(parameter int unsigned GRID_WIDTH        = 4
 , parameter int unsigned MY_ROW            = 0
 , parameter int unsigned MY_COL            = 0
-, parameter int unsigned PAYLOAD_WIDTH     = pa_noc::AXI_LITE_PAYLOAD_WIDTH
+, parameter int unsigned PAYLOAD_WIDTH     = $bits(pa_noc::ty_AXI_LITE_PAYLOAD)
 
 , localparam int unsigned COORD_WIDTH      = $clog2(GRID_WIDTH)
 , localparam int unsigned PROTOCOL_WIDTH   = pa_noc::PROTOCOL_WIDTH

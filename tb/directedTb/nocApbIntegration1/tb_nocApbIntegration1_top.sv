@@ -188,10 +188,11 @@ module tb_nocApbIntegration1_top
   logic                    routerToNiValid_tA;
   logic                    routerToNiReady_tA;
 
+/* verilator lint_off UNUSEDSIGNAL */
   logic [31:0] apbA_paddr;
+/* verilator lint_on UNUSEDSIGNAL */
   logic [31:0] apbA_pwdata;
   logic        apbA_pwrite;
-  logic [3:0]  apbA_pstrb;
   logic        apbA_psel;
   logic        apbA_penable;
   logic        apbA_pready;
@@ -218,7 +219,9 @@ module tb_nocApbIntegration1_top
   , .o_paddr   (apbA_paddr)
   , .o_pwdata  (apbA_pwdata)
   , .o_pwrite  (apbA_pwrite)
-  , .o_pstrb   (apbA_pstrb)
+/* verilator lint_off PINCONNECTEMPTY */
+  , .o_pstrb   ()
+/* verilator lint_on PINCONNECTEMPTY */
   , .o_psel    (apbA_psel)
   , .o_penable (apbA_penable)
   , .i_pready  (apbA_pready)
@@ -265,10 +268,11 @@ module tb_nocApbIntegration1_top
   logic                    routerToNiValid_tB;
   logic                    routerToNiReady_tB;
 
+/* verilator lint_off UNUSEDSIGNAL */
   logic [31:0] apbB_paddr;
+/* verilator lint_on UNUSEDSIGNAL */
   logic [31:0] apbB_pwdata;
   logic        apbB_pwrite;
-  logic [3:0]  apbB_pstrb;
   logic        apbB_psel;
   logic        apbB_penable;
   logic        apbB_pready;
@@ -295,7 +299,9 @@ module tb_nocApbIntegration1_top
   , .o_paddr   (apbB_paddr)
   , .o_pwdata  (apbB_pwdata)
   , .o_pwrite  (apbB_pwrite)
-  , .o_pstrb   (apbB_pstrb)
+/* verilator lint_off PINCONNECTEMPTY */
+  , .o_pstrb   ()
+/* verilator lint_on PINCONNECTEMPTY */
   , .o_psel    (apbB_psel)
   , .o_penable (apbB_penable)
   , .i_pready  (apbB_pready)

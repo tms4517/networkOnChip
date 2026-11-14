@@ -84,12 +84,13 @@ module roundRobinArbiter
 
   // Determine if the current mask allows any of the requesting clients to be
   // granted. If there are no requests that match the mask, grant based on the
-  // raw request (wrap-around).
+  // raw request (wrap-around). The mask after the current grant is used so the
+  // just-acknowledged client is not immediately re-granted.
   logic [NUM_CLIENTS-1:0] maskedReq;
   ty_CLIENT_GRANTED maskedGrant, rawRequestGrant;
 
   always_comb
-    maskedReq = i_request & mask_q;
+    maskedReq = i_request & mask_d;
 
   always_comb
     if (maskedReq[0])

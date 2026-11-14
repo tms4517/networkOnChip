@@ -45,7 +45,9 @@ module niApbTarget
 , input  var logic [31:0] i_prdata
 
   // NoC router NI — router to target (request)
+/* verilator lint_off UNUSEDSIGNAL */
 , input  var logic [PACKET_WIDTH-1:0] i_routerToNi
+/* verilator lint_on UNUSEDSIGNAL */
 , input  var logic                    i_routerToNiValid
 , output var logic                    o_routerToNiReady
 
@@ -65,15 +67,17 @@ module niApbTarget
   ty_state state_q, state_d;
 
   // {{{ Unpack APB Payload
-  // APB Payload encoding (same as niApbInitiator):
-  // -------------------------------------------------------
-  // |68            37|36             5|4      |3        0 |
-  // |PADDR (32 bits) |PWDATA (32 bits)|PWRITE |PSTRB(4b)  |
-  // -------------------------------------------------------
+/* verilator lint_off UNUSEDSIGNAL */
   logic [PAYLOAD_WIDTH-1:0] reqPayload;
+/* verilator lint_on UNUSEDSIGNAL */
 
   always_comb
     reqPayload = i_routerToNi[PACKET_WIDTH-1 -: PAYLOAD_WIDTH];
+
+  pa_noc::ty_APB_PAYLOAD reqFields;
+
+  always_comb
+    reqFields = reqPayload[$bits(pa_noc::ty_APB_PAYLOAD)-1:0];
 
   logic [31:0] paddr_d;
   logic [31:0] pwdata_d;
@@ -81,16 +85,16 @@ module niApbTarget
   logic [3:0]  pstrb_d;
 
   always_comb
-    paddr_d  = reqPayload[68:37];
+    paddr_d  = reqFields.paddr;
 
   always_comb
-    pwdata_d = reqPayload[36:5];
+    pwdata_d = reqFields.pdata;
 
   always_comb
-    pwrite_d = reqPayload[4];
+    pwrite_d = reqFields.pwrite;
 
   always_comb
-    pstrb_d  = reqPayload[3:0];
+    pstrb_d  = reqFields.pstrb;
   // }}} Unpack APB Payload
 
   // {{{ Extract source coordinates from incoming packet
@@ -213,7 +217,7 @@ module niApbTarget
         state_d = ST_IDLE;
     endcase
 
-  // Latch PRDATA from the slave when the access phase completes
+  // Latch PRDATA and PSLVERR from the slave when the access phase completes
   logic [31:0] prdata_q;
 
   always_ff @(posedge i_clk, negedge i_arst_n)
@@ -223,6 +227,16 @@ module niApbTarget
       prdata_q <= i_prdata;
     else
       prdata_q <= prdata_q;
+
+  logic pslverr_q;
+
+  always_ff @(posedge i_clk, negedge i_arst_n)
+    if (!i_arst_n)
+      pslverr_q <= '0;
+    else if (state_q == ST_APB_ACCESS && i_pready)
+      pslverr_q <= i_pslverr;
+    else
+      pslverr_q <= pslverr_q;
   // }}} FSM
 
   // {{{ APB master outputs
@@ -272,7 +286,7 @@ module niApbTarget
   end: gen_no_ni_filter
 
   // Response packet: PRDATA in the PWDATA field position, same encoding.
-  // Response payload: {PADDR, PRDATA, PWRITE=0, PSTRB=0}
+  // Response payload: {PADDR, PRDATA, PWRITE=0, PSTRB={3'b0, PSLVERR}}
   // Response destination = request's source coords (dynamic routing).
   // Response source = this target's own position (MY_ROW, MY_COL).
   // Response srcNiId = echoed from request (initiator's NI_ID).
@@ -282,7 +296,7 @@ module niApbTarget
   logic [COORD_WIDTH-1:0]   respSrcCol;
 
   always_comb
-    respPayload = PAYLOAD_WIDTH'({paddr_q, prdata_q, 1'b0, 4'b0000});
+    respPayload = PAYLOAD_WIDTH'({paddr_q, prdata_q, 1'b0, 3'b000, pslverr_q});
 
   always_comb
     respSrcRow = COORD_WIDTH'(MY_ROW);

@@ -28,7 +28,7 @@ module niAxiLiteTarget
 , localparam int unsigned NI_ID_WIDTH   = (MAX_NI_PER_ROUTER > 1) ?
                                           $clog2(MAX_NI_PER_ROUTER) : 0
   // Fabric payload width; native fields occupy the LSBs, MSBs are zero-padded.
-, parameter int unsigned PAYLOAD_WIDTH = pa_noc::AXI_LITE_PAYLOAD_WIDTH
+, parameter int unsigned PAYLOAD_WIDTH = $bits(pa_noc::ty_AXI_LITE_PAYLOAD)
 , localparam int unsigned PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
                                           + (COORD_WIDTH * 4)
 )
@@ -60,7 +60,9 @@ module niAxiLiteTarget
 , output var logic        o_rready
 
   // NoC router NI — router to target (request)
+/* verilator lint_off UNUSEDSIGNAL */
 , input  var logic [PACKET_WIDTH-1:0] i_routerToNi
+/* verilator lint_on UNUSEDSIGNAL */
 , input  var logic                    i_routerToNiValid
 , output var logic                    o_routerToNiReady
 
@@ -92,10 +94,19 @@ module niAxiLiteTarget
 
   // {{{ Unpack AXI-Lite request payload
   // Payload encoding (LSB to MSB): {ADDR, DATA, WSTRB, WRITE, RESP}
+/* verilator lint_off UNUSEDSIGNAL */
   logic [PAYLOAD_WIDTH-1:0] reqPayload;
+/* verilator lint_on UNUSEDSIGNAL */
 
   always_comb
     reqPayload = i_routerToNi[PACKET_WIDTH-1 -: PAYLOAD_WIDTH];
+
+/* verilator lint_off UNUSEDSIGNAL */
+  pa_noc::ty_AXI_LITE_PAYLOAD reqFields;
+/* verilator lint_on UNUSEDSIGNAL */
+
+  always_comb
+    reqFields = reqPayload[$bits(pa_noc::ty_AXI_LITE_PAYLOAD)-1:0];
 
   logic [31:0] addr_d;
   logic [31:0] wdata_d;
@@ -103,16 +114,16 @@ module niAxiLiteTarget
   logic        write_d;
 
   always_comb
-    addr_d  = reqPayload[pa_noc::AXI_ADDR_LSB +: 32];
+    addr_d  = reqFields.addr;
 
   always_comb
-    wdata_d = reqPayload[pa_noc::AXI_DATA_LSB +: 32];
+    wdata_d = reqFields.data;
 
   always_comb
-    wstrb_d = reqPayload[pa_noc::AXI_WSTRB_LSB +: 4];
+    wstrb_d = reqFields.wstrb;
 
   always_comb
-    write_d = reqPayload[pa_noc::AXI_WRITE_LSB];
+    write_d = reqFields.write;
   // }}} Unpack AXI-Lite request payload
 
   // {{{ Extract source coordinates from incoming packet

@@ -16,7 +16,6 @@ module apbToAhbBridge
 , input  var logic [31:0] i_paddr
 , input  var logic [31:0] i_pwdata
 , input  var logic        i_pwrite
-, input  var logic [3:0]  i_pstrb
 , input  var logic        i_psel
 , input  var logic        i_penable
 , output var logic        o_pready

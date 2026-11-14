@@ -3,12 +3,13 @@
 # correct delivery depends on the destination NI-ID demux in both directions.
 
 TOP_MODULE = tb_nocAxiIntegration2_top
-RTL_PATH = ../../../rtl
-ASSERT_PATH = ../assertions
+TB_DIR ?= $(CURDIR)/
+RTL_PATH = $(TB_DIR)../../../rtl
+ASSERT_PATH = $(TB_DIR)../assertions
 NOC_FILE_LIST = $(RTL_PATH)/noc.f
 ASSERT_SV = $(ASSERT_PATH)/axil_checker.sv
-TB_SV = tb_nocAxiIntegration2_top.sv
-TB_CPP = tb_nocAxiIntegration2.cpp
+TB_SV = $(TB_DIR)tb_nocAxiIntegration2_top.sv
+TB_CPP = $(TB_DIR)tb_nocAxiIntegration2.cpp
 WAVEFORM = waveform_nocAxiIntegration2.vcd
 STAMP = .stamp.verilate
 
@@ -54,7 +55,7 @@ $(WAVEFORM): ./obj_dir/V$(TOP_MODULE)
 $(STAMP): $(TB_SV) $(TB_CPP) $(ASSERT_SV)
 	@echo
 	@echo "### VERILATING ###"
-	verilator -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-TIMESCALEMOD -Wno-SYNCASYNCNET --assert --trace --x-assign unique --x-initial unique -cc \
+	verilator -Wall -Wno-TIMESCALEMOD -Wno-SYNCASYNCNET --assert --trace --x-assign unique --x-initial unique -cc \
 	-F $(NOC_FILE_LIST) $(ASSERT_SV) $(TB_SV) \
 	--top-module $(TOP_MODULE) --exe $(TB_CPP) \
 	$(VERILATOR_CFLAGS) \

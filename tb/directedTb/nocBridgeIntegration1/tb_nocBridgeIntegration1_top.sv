@@ -203,8 +203,11 @@ module tb_nocBridgeIntegration1_top
   logic                  per_routerToNiValid;
   logic                  per_routerToNiReady;
 
-  logic [31:0] per_paddr, per_pwdata; logic per_pwrite;
-  logic [3:0]  per_pstrb; logic per_psel, per_penable;
+/* verilator lint_off UNUSEDSIGNAL */
+  logic [31:0] per_paddr;
+/* verilator lint_on UNUSEDSIGNAL */
+  logic [31:0] per_pwdata; logic per_pwrite;
+  logic        per_psel, per_penable;
   logic        per_pready, per_pslverr; logic [31:0] per_prdata;
 
   always_comb per_niToRouterReady = niToRouterReady[PER_ROW][PER_COL];
@@ -221,7 +224,10 @@ module tb_nocBridgeIntegration1_top
   , .o_niToRouter (per_niToRouter), .o_niToRouterValid (per_niToRouterValid)
   , .i_niToRouterReady (per_niToRouterReady)
   , .o_paddr (per_paddr), .o_pwdata (per_pwdata), .o_pwrite (per_pwrite)
-  , .o_pstrb (per_pstrb), .o_psel (per_psel), .o_penable (per_penable)
+/* verilator lint_off PINCONNECTEMPTY */
+  , .o_pstrb ()
+/* verilator lint_on PINCONNECTEMPTY */
+  , .o_psel (per_psel), .o_penable (per_penable)
   , .i_pready (per_pready), .i_pslverr (per_pslverr), .i_prdata (per_prdata)
   );
 

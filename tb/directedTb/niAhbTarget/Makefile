@@ -3,10 +3,11 @@
 # correct AHB-Lite transactions to a local slave (and returns read responses).
 
 TOP_MODULE = tb_niAhbTarget_top
-RTL_PATH = ../../../rtl
+TB_DIR ?= $(CURDIR)/
+RTL_PATH = $(TB_DIR)../../../rtl
 NOC_FILE_LIST = $(RTL_PATH)/noc.f
-TB_SV = tb_niAhbTarget_top.sv
-TB_CPP = tb_niAhbTarget.cpp
+TB_SV = $(TB_DIR)tb_niAhbTarget_top.sv
+TB_CPP = $(TB_DIR)tb_niAhbTarget.cpp
 WAVEFORM = waveform_niAhbTarget.vcd
 STAMP = .stamp.verilate
 
@@ -52,7 +53,7 @@ $(WAVEFORM): ./obj_dir/V$(TOP_MODULE)
 $(STAMP): $(TB_SV) $(TB_CPP)
 	@echo
 	@echo "### VERILATING ###"
-	verilator -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM --trace --x-assign unique --x-initial unique -cc \
+	verilator -Wall --trace --x-assign unique --x-initial unique -cc \
 	-F $(NOC_FILE_LIST) $(TB_SV) \
 	--top-module $(TOP_MODULE) --exe $(TB_CPP) \
 	$(VERILATOR_CFLAGS) \

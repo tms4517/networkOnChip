@@ -4,10 +4,11 @@
 # the correct initiator.
 
 TOP_MODULE = tb_nocAhbIntegration1_top
-RTL_PATH = ../../../rtl
+TB_DIR ?= $(CURDIR)/
+RTL_PATH = $(TB_DIR)../../../rtl
 NOC_FILE_LIST = $(RTL_PATH)/noc.f
-TB_SV = tb_nocAhbIntegration1_top.sv
-TB_CPP = tb_nocAhbIntegration1.cpp
+TB_SV = $(TB_DIR)tb_nocAhbIntegration1_top.sv
+TB_CPP = $(TB_DIR)tb_nocAhbIntegration1.cpp
 WAVEFORM = waveform_nocAhbIntegration1.vcd
 STAMP = .stamp.verilate
 
@@ -53,7 +54,7 @@ $(WAVEFORM): ./obj_dir/V$(TOP_MODULE)
 $(STAMP): $(TB_SV) $(TB_CPP)
 	@echo
 	@echo "### VERILATING ###"
-	verilator -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM --trace --x-assign unique --x-initial unique -cc \
+	verilator -Wall --trace --x-assign unique --x-initial unique -cc \
 	-F $(NOC_FILE_LIST) $(TB_SV) \
 	--top-module $(TOP_MODULE) --exe $(TB_CPP) \
 	$(VERILATOR_CFLAGS) \

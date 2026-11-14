@@ -51,7 +51,9 @@ module niApbInitiator
 , input  var logic                    i_niToRouterReady
 
   // NoC router NI — router to initiator (response)
+/* verilator lint_off UNUSEDSIGNAL */
 , input  var logic [PACKET_WIDTH-1:0] i_routerToNi
+/* verilator lint_on UNUSEDSIGNAL */
 , input  var logic                    i_routerToNiValid
 , output var logic                    o_routerToNiReady
 );
@@ -226,16 +228,23 @@ module niApbInitiator
     else
       o_routerToNiReady = 1'b0;
 
-  // Response payload uses the same encoding as the request;
-  // PRDATA occupies the PWDATA field position: payload bits [36:5].
+/* verilator lint_off UNUSEDSIGNAL */
   logic [PAYLOAD_WIDTH-1:0] respPayload;
+/* verilator lint_on UNUSEDSIGNAL */
 
   always_comb
     respPayload = i_routerToNi[PACKET_WIDTH-1 -: PAYLOAD_WIDTH];
 
+/* verilator lint_off UNUSEDSIGNAL */
+  pa_noc::ty_APB_PAYLOAD respFields;
+/* verilator lint_on UNUSEDSIGNAL */
+
+  always_comb
+    respFields = respPayload[$bits(pa_noc::ty_APB_PAYLOAD)-1:0];
+
   always_comb
     if (state_q == ST_READ_RESP && i_routerToNiValid)
-      o_prdata = respPayload[36:5];
+      o_prdata = respFields.pdata;
     else
       o_prdata = '0;
 
@@ -257,7 +266,7 @@ module niApbInitiator
 
   always_comb
     if (state_q == ST_READ_RESP)
-      o_pslverr = 1'b0;
+      o_pslverr = i_routerToNiValid && respFields.pstrb[0];
     else if (!accessPhase)
       o_pslverr = 1'b0;
     else if (!addrHit)

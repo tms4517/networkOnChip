@@ -3,10 +3,15 @@ TOP_MODULE = noc
 NOC_ROOT = $(shell pwd)
 RTL_PATH = $(NOC_ROOT)/rtl
 TB_PATH = $(NOC_ROOT)/tb/directedTb
+FORMAL_PATH = $(NOC_ROOT)/tb/formal
+# Optional job-submission prefix (e.g. an LSF bsub command); empty runs locally.
+GRID ?=
 FILE_LIST = $(RTL_PATH)/$(TOP_MODULE).f
 TEST ?= 1
 SYNTH_PATH = $(NOC_ROOT)/synthesis
 YOSYS_SLANG_LIBSTDCPP = /tool/pandora64/.package/gcc-15.2.0/lib64/libstdc++.so.6
+
+export NOC_ROOT
 
 .PHONY: lint
 lint:
@@ -19,105 +24,40 @@ lint:
 	svlint -f $(FILE_LIST) \
 	-c $(NOC_ROOT)/.svlint.toml | tee $(LOG_DIR)/lint/svlint.log
 
-.PHONY: nocStructureTb
-nocStructureTb:
-	mkdir -p $(LOG_DIR)/nocStructureTb && \
-	$(MAKE) -C $(TB_PATH)/nocStructure TEST=$(TEST) | tee $(LOG_DIR)/nocStructureTb/sim.log
+# Directed testbenches: `make <name>Tb` builds and runs tb/directedTb/<name>
+DIRECTED_TBS = nocStructure \
+               niApbInitiator \
+               niApbTarget \
+               niAxiLiteInitiator \
+               niAxiLiteTarget \
+               niAhbInitiator \
+               niAhbTarget \
+               niRouterPort \
+               nocApbIntegration1 \
+               nocApbIntegration2 \
+               nocAxiIntegration1 \
+               nocAhbIntegration1 \
+               nocAxiIntegration2 \
+               nocAhbIntegration2 \
+               nocBridgeIntegration1 \
+               nocBridgeIntegration2 \
+               nocBridgeIntegration3 \
+               asyncFifo \
+               cdcNiBridge \
+               nocAsyncIntegration1
 
-.PHONY: niApbInitiatorTb
-niApbInitiatorTb:
-	mkdir -p $(LOG_DIR)/niApbInitiatorTb && \
-	$(MAKE) -C $(TB_PATH)/niApbInitiator | tee $(LOG_DIR)/niApbInitiatorTb/sim.log
+.PHONY: $(addsuffix Tb,$(DIRECTED_TBS))
+$(addsuffix Tb,$(DIRECTED_TBS)): %Tb:
+	mkdir -p $(LOG_DIR)/$@ && \
+	cd $(LOG_DIR)/$@ && \
+	$(MAKE) -f $(TB_PATH)/$*/Makefile TB_DIR=$(TB_PATH)/$*/ TEST=$(TEST) | tee sim.log
 
-.PHONY: niApbTargetTb
-niApbTargetTb:
-	mkdir -p $(LOG_DIR)/niApbTargetTb && \
-	$(MAKE) -C $(TB_PATH)/niApbTarget | tee $(LOG_DIR)/niApbTargetTb/sim.log
-
-.PHONY: niAxiLiteInitiatorTb
-niAxiLiteInitiatorTb:
-	mkdir -p $(LOG_DIR)/niAxiLiteInitiatorTb && \
-	$(MAKE) -C $(TB_PATH)/niAxiLiteInitiator | tee $(LOG_DIR)/niAxiLiteInitiatorTb/sim.log
-
-.PHONY: niAxiLiteTargetTb
-niAxiLiteTargetTb:
-	mkdir -p $(LOG_DIR)/niAxiLiteTargetTb && \
-	$(MAKE) -C $(TB_PATH)/niAxiLiteTarget | tee $(LOG_DIR)/niAxiLiteTargetTb/sim.log
-
-.PHONY: niAhbInitiatorTb
-niAhbInitiatorTb:
-	mkdir -p $(LOG_DIR)/niAhbInitiatorTb && \
-	$(MAKE) -C $(TB_PATH)/niAhbInitiator | tee $(LOG_DIR)/niAhbInitiatorTb/sim.log
-
-.PHONY: niAhbTargetTb
-niAhbTargetTb:
-	mkdir -p $(LOG_DIR)/niAhbTargetTb && \
-	$(MAKE) -C $(TB_PATH)/niAhbTarget | tee $(LOG_DIR)/niAhbTargetTb/sim.log
-
-.PHONY: niRouterPortTb
-niRouterPortTb:
-	mkdir -p $(LOG_DIR)/niRouterPortTb && \
-	$(MAKE) -C $(TB_PATH)/niRouterPort | tee $(LOG_DIR)/niRouterPortTb/sim.log
-
-.PHONY: nocApbIntegration1Tb
-nocApbIntegration1Tb:
-	mkdir -p $(LOG_DIR)/nocApbIntegration1Tb && \
-	$(MAKE) -C $(TB_PATH)/nocApbIntegration1 | tee $(LOG_DIR)/nocApbIntegration1Tb/sim.log
-
-.PHONY: nocApbIntegration2Tb
-nocApbIntegration2Tb:
-	mkdir -p $(LOG_DIR)/nocApbIntegration2Tb && \
-	$(MAKE) -C $(TB_PATH)/nocApbIntegration2 | tee $(LOG_DIR)/nocApbIntegration2Tb/sim.log
-
-.PHONY: nocAxiIntegration1Tb
-nocAxiIntegration1Tb:
-	mkdir -p $(LOG_DIR)/nocAxiIntegration1Tb && \
-	$(MAKE) -C $(TB_PATH)/nocAxiIntegration1 | tee $(LOG_DIR)/nocAxiIntegration1Tb/sim.log
-
-.PHONY: nocAhbIntegration1Tb
-nocAhbIntegration1Tb:
-	mkdir -p $(LOG_DIR)/nocAhbIntegration1Tb && \
-	$(MAKE) -C $(TB_PATH)/nocAhbIntegration1 | tee $(LOG_DIR)/nocAhbIntegration1Tb/sim.log
-
-.PHONY: nocAxiIntegration2Tb
-nocAxiIntegration2Tb:
-	mkdir -p $(LOG_DIR)/nocAxiIntegration2Tb && \
-	$(MAKE) -C $(TB_PATH)/nocAxiIntegration2 | tee $(LOG_DIR)/nocAxiIntegration2Tb/sim.log
-
-.PHONY: nocAhbIntegration2Tb
-nocAhbIntegration2Tb:
-	mkdir -p $(LOG_DIR)/nocAhbIntegration2Tb && \
-	$(MAKE) -C $(TB_PATH)/nocAhbIntegration2 | tee $(LOG_DIR)/nocAhbIntegration2Tb/sim.log
-
-.PHONY: nocBridgeIntegration1Tb
-nocBridgeIntegration1Tb:
-	mkdir -p $(LOG_DIR)/nocBridgeIntegration1Tb && \
-	$(MAKE) -C $(TB_PATH)/nocBridgeIntegration1 | tee $(LOG_DIR)/nocBridgeIntegration1Tb/sim.log
-
-.PHONY: nocBridgeIntegration2Tb
-nocBridgeIntegration2Tb:
-	mkdir -p $(LOG_DIR)/nocBridgeIntegration2Tb && \
-	$(MAKE) -C $(TB_PATH)/nocBridgeIntegration2 | tee $(LOG_DIR)/nocBridgeIntegration2Tb/sim.log
-
-.PHONY: nocBridgeIntegration3Tb
-nocBridgeIntegration3Tb:
-	mkdir -p $(LOG_DIR)/nocBridgeIntegration3Tb && \
-	$(MAKE) -C $(TB_PATH)/nocBridgeIntegration3 | tee $(LOG_DIR)/nocBridgeIntegration3Tb/sim.log
-
-.PHONY: asyncFifoTb
-asyncFifoTb:
-	mkdir -p $(LOG_DIR)/asyncFifoTb && \
-	$(MAKE) -C $(TB_PATH)/asyncFifo | tee $(LOG_DIR)/asyncFifoTb/sim.log
-
-.PHONY: cdcNiBridgeTb
-cdcNiBridgeTb:
-	mkdir -p $(LOG_DIR)/cdcNiBridgeTb && \
-	$(MAKE) -C $(TB_PATH)/cdcNiBridge | tee $(LOG_DIR)/cdcNiBridgeTb/sim.log
-
-.PHONY: nocAsyncIntegration1Tb
-nocAsyncIntegration1Tb:
-	mkdir -p $(LOG_DIR)/nocAsyncIntegration1Tb && \
-	$(MAKE) -C $(TB_PATH)/nocAsyncIntegration1 | tee $(LOG_DIR)/nocAsyncIntegration1Tb/sim.log
+.PHONY: formalRouterTb
+formalRouterTb:
+	mkdir -p $(LOG_DIR)/formalRouterTb && \
+	cd $(LOG_DIR)/formalRouterTb && \
+	rm -rf jgproject && \
+	$(GRID) jg $(FORMAL_PATH)/router/jg/jg.tcl | tee jg.log
 
 .PHONY: synthesis
 synthesis:
@@ -130,23 +70,3 @@ synthesis:
 .PHONY: clean
 clean:
 	rm -rf $(LOG_DIR)
-	$(MAKE) -C $(TB_PATH)/nocStructure clean
-	$(MAKE) -C $(TB_PATH)/niApbInitiator clean
-	$(MAKE) -C $(TB_PATH)/niApbTarget clean
-	$(MAKE) -C $(TB_PATH)/niRouterPort clean
-	$(MAKE) -C $(TB_PATH)/nocApbIntegration1 clean
-	$(MAKE) -C $(TB_PATH)/nocApbIntegration2 clean
-	$(MAKE) -C $(TB_PATH)/niAxiLiteInitiator clean
-	$(MAKE) -C $(TB_PATH)/niAxiLiteTarget clean
-	$(MAKE) -C $(TB_PATH)/niAhbInitiator clean
-	$(MAKE) -C $(TB_PATH)/niAhbTarget clean
-	$(MAKE) -C $(TB_PATH)/nocAxiIntegration1 clean
-	$(MAKE) -C $(TB_PATH)/nocAhbIntegration1 clean
-	$(MAKE) -C $(TB_PATH)/nocAxiIntegration2 clean
-	$(MAKE) -C $(TB_PATH)/nocAhbIntegration2 clean
-	$(MAKE) -C $(TB_PATH)/nocBridgeIntegration1 clean
-	$(MAKE) -C $(TB_PATH)/nocBridgeIntegration2 clean
-	$(MAKE) -C $(TB_PATH)/nocBridgeIntegration3 clean
-	$(MAKE) -C $(TB_PATH)/asyncFifo clean
-	$(MAKE) -C $(TB_PATH)/cdcNiBridge clean
-	$(MAKE) -C $(TB_PATH)/nocAsyncIntegration1 clean
