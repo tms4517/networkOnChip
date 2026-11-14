@@ -43,6 +43,7 @@ DIRECTED_TBS = nocStructure \
                nocBridgeIntegration1 \
                nocBridgeIntegration2 \
                nocBridgeIntegration3 \
+               nocBridgeIntegration4 \
                asyncFifo \
                cdcNiBridge \
                nocAsyncIntegration1

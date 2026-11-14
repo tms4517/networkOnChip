@@ -17,10 +17,15 @@ module axiTargetBridge
 , parameter int unsigned MY_ROW            = 0
 , parameter int unsigned MY_COL            = 0
 , parameter int unsigned PAYLOAD_WIDTH     = $bits(pa_noc::ty_AXI_LITE_PAYLOAD)
+, parameter int unsigned MAX_NI_PER_ROUTER = pa_noc::MAX_NI_PER_ROUTER
+, parameter int unsigned NI_ID             = 0
 
 , localparam int unsigned COORD_WIDTH      = $clog2(GRID_WIDTH)
+, localparam int unsigned NI_ID_WIDTH      = (MAX_NI_PER_ROUTER > 1)
+                                            ? $clog2(MAX_NI_PER_ROUTER) : 0
 , localparam int unsigned PROTOCOL_WIDTH   = pa_noc::PROTOCOL_WIDTH
-, localparam int unsigned NI_PACKET_WIDTH  = PAYLOAD_WIDTH + (COORD_WIDTH * 4)
+, localparam int unsigned NI_PACKET_WIDTH  = PAYLOAD_WIDTH + (2 * NI_ID_WIDTH)
+                                            + (COORD_WIDTH * 4)
 , localparam int unsigned FAB_PACKET_WIDTH = NI_PACKET_WIDTH + PROTOCOL_WIDTH
 )
 ( input  var logic i_clk
@@ -187,10 +192,12 @@ module axiTargetBridge
   logic        axiT_rready;
 
   niAxiLiteTarget
-  #(.GRID_WIDTH    (GRID_WIDTH)
-  , .MY_ROW        (MY_ROW)
-  , .MY_COL        (MY_COL)
-  , .PAYLOAD_WIDTH (PAYLOAD_WIDTH))
+  #(.GRID_WIDTH        (GRID_WIDTH)
+  , .MY_ROW            (MY_ROW)
+  , .MY_COL            (MY_COL)
+  , .PAYLOAD_WIDTH     (PAYLOAD_WIDTH)
+  , .MAX_NI_PER_ROUTER (MAX_NI_PER_ROUTER)
+  , .NI_ID             (NI_ID))
   u_axiTarget
   ( .i_clk    (i_clk)
   , .i_arst_n (i_arst_n)
@@ -247,10 +254,12 @@ module axiTargetBridge
   logic        ahbBr_rready;
 
   niAhbTarget
-  #(.GRID_WIDTH    (GRID_WIDTH)
-  , .MY_ROW        (MY_ROW)
-  , .MY_COL        (MY_COL)
-  , .PAYLOAD_WIDTH (PAYLOAD_WIDTH))
+  #(.GRID_WIDTH        (GRID_WIDTH)
+  , .MY_ROW            (MY_ROW)
+  , .MY_COL            (MY_COL)
+  , .PAYLOAD_WIDTH     (PAYLOAD_WIDTH)
+  , .MAX_NI_PER_ROUTER (MAX_NI_PER_ROUTER)
+  , .NI_ID             (NI_ID))
   u_ahbTarget
   ( .i_clk    (i_clk)
   , .i_arst_n (i_arst_n)
@@ -330,10 +339,12 @@ module axiTargetBridge
   logic        apbBr_rready;
 
   niApbTarget
-  #(.GRID_WIDTH    (GRID_WIDTH)
-  , .MY_ROW        (MY_ROW)
-  , .MY_COL        (MY_COL)
-  , .PAYLOAD_WIDTH (PAYLOAD_WIDTH))
+  #(.GRID_WIDTH        (GRID_WIDTH)
+  , .MY_ROW            (MY_ROW)
+  , .MY_COL            (MY_COL)
+  , .PAYLOAD_WIDTH     (PAYLOAD_WIDTH)
+  , .MAX_NI_PER_ROUTER (MAX_NI_PER_ROUTER)
+  , .NI_ID             (NI_ID))
   u_apbTarget
   ( .i_clk    (i_clk)
   , .i_arst_n (i_arst_n)
