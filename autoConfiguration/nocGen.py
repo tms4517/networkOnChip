@@ -301,13 +301,6 @@ class Noc:
         self.maxNiPerRouter = max(len(n) for n in self.routerNodes.values())
         if self.maxNiPerRouter > 256:
             raise ConfigError("at most 256 NIs may share a router")
-        if self.mixed and self.maxNiPerRouter > 1:
-            shared = sorted(r for r, n in self.routerNodes.items()
-                            if len(n) > 1)
-            raise ConfigError(
-                "mixed protocols ({}) require one NI per router; routers {} "
-                "host several NIs".format(", ".join(self.protocols),
-                                          ", ".join(map(str, shared))))
         self.niIdWidth = (math.ceil(math.log2(self.maxNiPerRouter))
                           if self.maxNiPerRouter > 1 else 0)
 
@@ -642,22 +635,16 @@ class Emitter:
         body = declarations(self.nodeSignals(node)) + [""]
         if noc.mixed:
             module = TARGET_BRIDGE[node.protocol][0]
-            params = [
-                ("GRID_WIDTH", "GRID_WIDTH"),
-                ("MY_ROW", str(node.row)),
-                ("MY_COL", str(node.col)),
-                ("PAYLOAD_WIDTH", "NI_PAYLOAD_WIDTH"),
-            ]
         else:
             module = "ni{}Target".format(PROTOCOL_CAMEL[node.protocol])
-            params = [
-                ("GRID_WIDTH", "GRID_WIDTH"),
-                ("MY_ROW", str(node.row)),
-                ("MY_COL", str(node.col)),
-                ("MAX_NI_PER_ROUTER", "MAX_NI_PER_ROUTER"),
-                ("NI_ID", str(node.niId)),
-                ("PAYLOAD_WIDTH", "NI_PAYLOAD_WIDTH"),
-            ]
+        params = [
+            ("GRID_WIDTH", "GRID_WIDTH"),
+            ("MY_ROW", str(node.row)),
+            ("MY_COL", str(node.col)),
+            ("MAX_NI_PER_ROUTER", "MAX_NI_PER_ROUTER"),
+            ("NI_ID", str(node.niId)),
+            ("PAYLOAD_WIDTH", "NI_PAYLOAD_WIDTH"),
+        ]
         ports = [
             ("i_clk", "i_{}Clk".format(node.clock)),
             ("i_arst_n", "i_{}Arst_n".format(node.clock)),
