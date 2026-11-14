@@ -1,0 +1,19 @@
+{
+  "projectName": "Soc",
+  "numRouters": 4,
+  "fabricClock": "fabric",
+  "initiators": [
+    {"name": "cpu", "protocol": "axiLite", "clock": "cpu", "router": 0},
+    {"name": "dma", "protocol": "ahb", "clock": "fabric", "router": 3},
+    {"name": "debug", "protocol": "apb", "clock": "peripheral", "router": 2}
+  ],
+  "targets": [
+    {
+      "name": "uart",
+      "protocol": "apb",
+      "clock": "peripheral",
+      "router": 1,
+      "addressMap": [{"base": "0x4000_0000", "size": "0x1000"}]
+    }
+  ]
+}
