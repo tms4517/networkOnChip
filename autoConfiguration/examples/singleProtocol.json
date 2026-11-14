@@ -1,6 +1,6 @@
 {
   "projectName": "Sensor",
-  "numRouters": 6,
+  "gridWidth": 3,
   "fabricClock": "fabric",
   "initiators": [
     {"name": "cpu", "protocol": "apb", "clock": "cpu", "router": 0},

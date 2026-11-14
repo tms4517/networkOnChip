@@ -3,7 +3,8 @@
 """Generate a ready-to-integrate noc<ProjectName> top from a JSON description.
 
 The JSON lists initiators and targets (name, protocol, clock domain, router
-and, for targets, an address map), the number of routers and the fabric clock.
+and, for targets, an address map), the mesh grid width (gridWidth N gives an
+NxN mesh; routers are numbered row-major 0..N*N-1) and the fabric clock.
 The generated top exposes only the initiator/target protocol ports plus one
 clock/reset pair per clock domain; NIs, CDC bridges, router-port muxes, target
 protocol bridges and the mesh are instantiated and wired internally.
@@ -177,6 +178,7 @@ def checkKeys(entry, allowed, where):
 
 
 def parseNode(kind, entry, numRouters, index):
+    """numRouters = gridWidth ** 2; router is a row-major index."""
     where = "{}[{}]".format(kind + "s", index)
     if not isinstance(entry, dict):
         raise ConfigError("{}: must be an object".format(where))
@@ -199,7 +201,8 @@ def parseNode(kind, entry, numRouters, index):
               where)
     router = require(entry, "router", where)
     if not isInteger(router) or not 0 <= router < numRouters:
-        raise ConfigError("{}: router must be an integer in [0, {}]"
+        raise ConfigError("{}: router must be an integer in [0, {}] "
+                          "(row-major: router = row * gridWidth + col)"
                           .format(where, numRouters - 1))
     node = Node(kind, name, protocol, clock, router)
 
@@ -241,7 +244,7 @@ class Noc:
     def __init__(self, config):
         if not isinstance(config, dict):
             raise ConfigError("top level must be an object")
-        checkKeys(config, ["projectName", "numRouters", "fabricClock",
+        checkKeys(config, ["projectName", "gridWidth", "fabricClock",
                            "initiators", "targets"], "config")
 
         project = require(config, "projectName", "config")
@@ -249,11 +252,11 @@ class Noc:
             raise ConfigError("projectName must be [A-Za-z][A-Za-z0-9]*")
         self.topName = "noc" + project[0].upper() + project[1:]
 
-        self.numRouters = require(config, "numRouters", "config")
-        if not isInteger(self.numRouters) or self.numRouters < 1:
-            raise ConfigError("numRouters must be a positive integer")
-        # The mesh is square with at least 2x2 routers.
-        self.gridWidth = max(2, math.ceil(math.sqrt(self.numRouters)))
+        self.gridWidth = require(config, "gridWidth", "config")
+        if not isInteger(self.gridWidth) or self.gridWidth < 2:
+            raise ConfigError("gridWidth must be an integer >= 2 "
+                              "(gridWidth N gives an NxN mesh)")
+        self.numRouters = self.gridWidth ** 2
 
         self.fabricClock = require(config, "fabricClock", "config")
         if (not isinstance(self.fabricClock, str)
@@ -427,8 +430,7 @@ class Emitter:
             " clock/reset",
             "// pair per clock domain. Internally every initiator/target is"
             " attached",
-            "// to a {0}x{0} mesh ({1} router(s) requested) through its"
-            " protocol NI,"
+            "// to a {0}x{0} mesh ({1} routers) through its protocol NI,"
             .format(noc.gridWidth, noc.numRouters),
             "// plus a cdcNiBridge when its clock differs from the fabric"
             " clock.",

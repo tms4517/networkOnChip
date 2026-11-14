@@ -1,6 +1,6 @@
 {
   "projectName": "Soc",
-  "numRouters": 4,
+  "gridWidth": 2,
   "fabricClock": "fabric",
   "initiators": [
     {"name": "cpu", "protocol": "axiLite", "clock": "cpu", "router": 0},
