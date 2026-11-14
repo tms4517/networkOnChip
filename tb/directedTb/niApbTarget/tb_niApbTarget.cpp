@@ -62,7 +62,7 @@ struct NocPacket {
 };
 
 // Pack a NocPacket into the Verilator wide type (3 x 32-bit words for 77 bits)
-static void packPacket(const NocPacket &pkt, WData *out) {
+static void packPacket(const NocPacket &pkt, EData *out) {
   // Zero out
   out[0] = 0;
   out[1] = 0;
@@ -93,7 +93,7 @@ static void packPacket(const NocPacket &pkt, WData *out) {
 }
 
 // Decode response packet from Verilator wide type
-static NocPacket unpackPacket(const WData *in) {
+static NocPacket unpackPacket(const EData *in) {
   NocPacket pkt;
   pkt.dst_col = in[0] & 0x3;
   pkt.dst_row = (in[0] >> 2) & 0x3;
@@ -154,7 +154,7 @@ int main(int argc, char **argv, char **env) {
   dut->i_arst_n = 0;
   dut->i_srcNiToRouterValid = 0;
   dut->i_srcRouterToNiReady = 1;
-  memset(dut->i_srcNiToRouter, 0, sizeof(dut->i_srcNiToRouter));
+  memset(dut->i_srcNiToRouter.data(), 0, sizeof(dut->i_srcNiToRouter));
 
   while (sim_time < MAX_SIM_TIME) {
     dut->i_clk ^= 1;
@@ -186,7 +186,7 @@ int main(int argc, char **argv, char **env) {
 
           case PH_INJECT:
             // Drive packet at source NI
-            packPacket(t.req, dut->i_srcNiToRouter);
+            packPacket(t.req, dut->i_srcNiToRouter.data());
             dut->i_srcNiToRouterValid = 1;
             phase = PH_WAIT_ACCEPT;
             phase_start = posedge_cnt;
@@ -239,7 +239,7 @@ int main(int argc, char **argv, char **env) {
           case PH_WAIT_RESP:
             // For reads: wait for response packet at source NI
             if (dut->o_srcRouterToNiValid) {
-              NocPacket resp = unpackPacket(dut->o_srcRouterToNi);
+              NocPacket resp = unpackPacket(dut->o_srcRouterToNi.data());
               // PRDATA is in the PWDATA field position
               uint32_t prdata = resp.pwdata;
 
