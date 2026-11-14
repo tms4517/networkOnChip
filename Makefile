@@ -9,7 +9,8 @@ GRID ?=
 FILE_LIST = $(RTL_PATH)/$(TOP_MODULE).f
 TEST ?= 1
 SYNTH_PATH = $(NOC_ROOT)/synthesis
-YOSYS_SLANG_LIBSTDCPP = /tool/pandora64/.package/gcc-15.2.0/lib64/libstdc++.so.6
+# Optional libstdc++ to LD_PRELOAD for the yosys-slang plugin (set in env if needed).
+YOSYS_SLANG_LIBSTDCPP ?=
 
 export NOC_ROOT
 
@@ -64,7 +65,7 @@ synthesis:
 	mkdir -p $(LOG_DIR)/synthesis/yosys && \
 	cd $(LOG_DIR)/synthesis/yosys && \
 	sed 's|__NOC_ROOT__|$(NOC_ROOT)|g' $(SYNTH_PATH)/yosys.ys > yosys.ys && \
-	env LD_PRELOAD=$(YOSYS_SLANG_LIBSTDCPP) \
+	env $(if $(YOSYS_SLANG_LIBSTDCPP),LD_PRELOAD=$(YOSYS_SLANG_LIBSTDCPP)) \
 		yosys -m slang -s yosys.ys | tee yosys.log
 
 .PHONY: clean
