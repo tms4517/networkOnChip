@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Tej Sanghavi.
 // Formal testbench for the NoC `router`: instantiates the DUT and the
 // assertion module. Clock, reset, all input packets/valids and all downstream
-// readys are left undriven so JasperGold treats them as free primary inputs.
+// readys are left undriven so SymbiYosys treats them as free primary inputs.
+// Reset is asserted in the first cycle only, then held deasserted.
 // The router sits in the middle of the grid (row 1, column 1) so all four
 // neighbour directions are reachable. A small PACKET_WIDTH keeps the state
 // space small while still carrying payload bits above the coordinates.
@@ -35,6 +36,20 @@ module routerTb
 
   logic [PORT_WIDTH-1:0] trackPort;
   logic                  trackPick;
+
+  // Formal has no reset command: the initial value marks the first cycle.
+  logic initDone_q = 1'b0;
+
+  always_ff @(posedge i_clk)
+    initDone_q <= 1'b1;
+
+  logic assume_resetAtStart;
+
+  always_comb
+    assume_resetAtStart = (i_arst_n == initDone_q);
+
+  always_ff @(posedge i_clk)
+    resetAtStart: assume (assume_resetAtStart);
 
   router
   #(.GRID_WIDTH         (GRID_WIDTH)

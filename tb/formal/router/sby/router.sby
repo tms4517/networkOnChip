@@ -1,0 +1,30 @@
+# SymbiYosys formal run for the NoC `router`.
+#   prove: unbounded proof of every assert (ABC PDR).
+#   cover: reachability of every cover (SMT BMC).
+
+[tasks]
+prove
+cover
+
+[options]
+prove: mode prove
+cover: mode cover
+cover: depth 30
+
+[engines]
+prove: abc pdr
+cover: smtbmc z3
+
+[script]
+plugin -i slang
+read_slang --top routerTb pa_noc.sv synchronousFifo.sv roundRobinArbiter.sv arbiter.sv router.sv routerAssertions.sv routerTb.sv
+prep -top routerTb
+
+[files]
+../../../../rtl/pa_noc.sv
+../../../../rtl/fabric/synchronousFifo.sv
+../../../../rtl/fabric/roundRobinArbiter.sv
+../../../../rtl/fabric/arbiter.sv
+../../../../rtl/fabric/router.sv
+../routerAssertions.sv
+../routerTb.sv

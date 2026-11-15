@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Tej Sanghavi.
 
 // Properties of the NoC `router`. Each property is expressed with auxiliary
-// modelling logic and a single-cycle boolean checked by a concurrent assertion.
+// modelling logic and a single-cycle boolean checked by a clocked immediate
+// assertion (yosys-slang does not support concurrent SVA).
 // `assert_*` booleans are the failing condition (high = violation) and are
-// checked with `assert property (!assert_*)`; `assume_*` and `cover_*` are
+// checked with `assert (!assert_*)`; `assume_*` and `cover_*` are
 // positive.
 //
 // The five router ports are packed into arrays indexed by
@@ -61,6 +62,11 @@ module routerAssertions
 
   localparam int unsigned OCCUPANCY_WIDTH = FIFO_ADDRESS_WIDTH + 1;
   localparam int unsigned WAIT_WIDTH = 4;
+
+  // yosys-slang does not implement $onehot0.
+  function automatic logic f_isOneHot0(input logic [NUM_PORTS-1:0] x);
+    return (x & (x - 1'b1)) == '0;
+  endfunction
 
   // {{{ Auxiliary logic
 
@@ -310,7 +316,8 @@ module routerAssertions
   always_comb
     assume_trackPortLegal = (i_trackPort < PORT_WIDTH'(NUM_PORTS));
 
-  trackPortLegal: assume property (@(posedge i_clk) assume_trackPortLegal);
+  always_ff @(posedge i_clk)
+    trackPortLegal: assume (assume_trackPortLegal);
 
   // }}} Stimulus constraints
 
@@ -322,10 +329,11 @@ module routerAssertions
 
   always_comb
     assert_outValidOneHot = &{i_arst_n
-                            , !$onehot0(i_outValid)
+                            , !f_isOneHot0(i_outValid)
                             };
 
-  outValidOneHot: assert property (@(posedge i_clk) !assert_outValidOneHot);
+  always_ff @(posedge i_clk)
+    outValidOneHot: assert (!assert_outValidOneHot);
 
   // Valid/ready: once presented, an output holds valid and data stable until
   // the downstream accepts it.
@@ -340,8 +348,8 @@ module routerAssertions
         , !(i_outValid[i] && (i_outData[i] == outData_q[i]))
         };
 
-    outStableWhileStalled:
-      assert property (@(posedge i_clk) !assert_outStableWhileStalled);
+    always_ff @(posedge i_clk)
+      outStableWhileStalled: assert (!assert_outStableWhileStalled);
 
   end: genAssertOutStable
 
@@ -355,8 +363,8 @@ module routerAssertions
                                 , forwarded_q
                                 };
 
-  noBackToBackForward:
-    assert property (@(posedge i_clk) !assert_noBackToBackForward);
+  always_ff @(posedge i_clk)
+    noBackToBackForward: assert (!assert_noBackToBackForward);
 
   // }}} Output interface assertions
 
@@ -380,7 +388,8 @@ module routerAssertions
                             , !((niRow == ROUTER_ROW) && (niCol == ROUTER_COL))
                             };
 
-  niRouteCorrect: assert property (@(posedge i_clk) !assert_niRouteCorrect);
+  always_ff @(posedge i_clk)
+    niRouteCorrect: assert (!assert_niRouteCorrect);
 
   logic [COORD_WIDTH-1:0] northRow, northCol;
 
@@ -399,8 +408,8 @@ module routerAssertions
       , !((northCol == ROUTER_COL) && (northRow < ROUTER_ROW))
       };
 
-  northRouteCorrect:
-    assert property (@(posedge i_clk) !assert_northRouteCorrect);
+  always_ff @(posedge i_clk)
+    northRouteCorrect: assert (!assert_northRouteCorrect);
 
   logic [COORD_WIDTH-1:0] southRow, southCol;
 
@@ -419,8 +428,8 @@ module routerAssertions
       , !((southCol == ROUTER_COL) && (southRow > ROUTER_ROW))
       };
 
-  southRouteCorrect:
-    assert property (@(posedge i_clk) !assert_southRouteCorrect);
+  always_ff @(posedge i_clk)
+    southRouteCorrect: assert (!assert_southRouteCorrect);
 
   logic [COORD_WIDTH-1:0] eastCol;
 
@@ -435,8 +444,8 @@ module routerAssertions
                               , (eastCol <= ROUTER_COL)
                               };
 
-  eastRouteCorrect:
-    assert property (@(posedge i_clk) !assert_eastRouteCorrect);
+  always_ff @(posedge i_clk)
+    eastRouteCorrect: assert (!assert_eastRouteCorrect);
 
   logic [COORD_WIDTH-1:0] westCol;
 
@@ -451,8 +460,8 @@ module routerAssertions
                               , (westCol >= ROUTER_COL)
                               };
 
-  westRouteCorrect:
-    assert property (@(posedge i_clk) !assert_westRouteCorrect);
+  always_ff @(posedge i_clk)
+    westRouteCorrect: assert (!assert_westRouteCorrect);
 
   // }}} XY routing assertions
 
@@ -464,12 +473,12 @@ module routerAssertions
 
   always_comb
     assert_forwardPopsOneFifo = &{i_arst_n
-                                , !$onehot0(i_fifoReadEn)
+                                , !f_isOneHot0(i_fifoReadEn)
                                   || ((|i_fifoReadEn) != forwarded)
                                 };
 
-  forwardPopsOneFifo:
-    assert property (@(posedge i_clk) !assert_forwardPopsOneFifo);
+  always_ff @(posedge i_clk)
+    forwardPopsOneFifo: assert (!assert_forwardPopsOneFifo);
 
   for (genvar i = 0; i < NUM_PORTS; i++) begin: genAssertFifo
 
@@ -482,8 +491,8 @@ module routerAssertions
                               , !hasPacket[i]
                               };
 
-    popOnlyNonEmpty:
-      assert property (@(posedge i_clk) !assert_popOnlyNonEmpty);
+    always_ff @(posedge i_clk)
+      popOnlyNonEmpty: assert (!assert_popOnlyNonEmpty);
 
     // Ready is deasserted exactly when the FIFO is full (no overflow, no
     // needless back-pressure).
@@ -495,8 +504,8 @@ module routerAssertions
         , i_inReady[i] != (occupancy_q[i] < OCCUPANCY_WIDTH'(DEPTH))
         };
 
-    readyMatchesOccupancy:
-      assert property (@(posedge i_clk) !assert_readyMatchesOccupancy);
+    always_ff @(posedge i_clk)
+      readyMatchesOccupancy: assert (!assert_readyMatchesOccupancy);
 
   end: genAssertFifo
 
@@ -508,10 +517,11 @@ module routerAssertions
 
   always_comb
     assert_grantOneHot = &{i_arst_n
-                        , !$onehot0(i_grant)
+                        , !f_isOneHot0(i_grant)
                         };
 
-  grantOneHot: assert property (@(posedge i_clk) !assert_grantOneHot);
+  always_ff @(posedge i_clk)
+    grantOneHot: assert (!assert_grantOneHot);
 
   // A grant to a port that still has a packet is held until that packet is
   // forwarded, so the registered output never sees its packet change.
@@ -525,8 +535,8 @@ module routerAssertions
                               , (i_grant != grant_q)
                               };
 
-  grantHeldUntilAck:
-    assert property (@(posedge i_clk) !assert_grantHeldUntilAck);
+  always_ff @(posedge i_clk)
+    grantHeldUntilAck: assert (!assert_grantHeldUntilAck);
 
   // Round-robin fairness: a waiting port is granted before more than
   // NUM_PORTS-1 other packets are forwarded.
@@ -540,7 +550,8 @@ module routerAssertions
         , (waitAcks_q[i] > WAIT_WIDTH'(NUM_PORTS - 1))
         };
 
-    roundRobinFair: assert property (@(posedge i_clk) !assert_roundRobinFair);
+    always_ff @(posedge i_clk)
+      roundRobinFair: assert (!assert_roundRobinFair);
 
     // Starvation freedom at the bound the RTL actually meets: the mask lags
     // the grant by one ack, so a port can be granted twice in a row.
@@ -552,7 +563,8 @@ module routerAssertions
         , (waitAcks_q[i] > WAIT_WIDTH'(2 * (NUM_PORTS - 1)))
         };
 
-    starvationFree: assert property (@(posedge i_clk) !assert_starvationFree);
+    always_ff @(posedge i_clk)
+      starvationFree: assert (!assert_starvationFree);
 
   end: genAssertFairness
 
@@ -575,8 +587,8 @@ module routerAssertions
                                         , (occupancy_q[i] != pointerOccupancy)
                                         };
 
-    occupancyMatchesPointers:
-      assert property (@(posedge i_clk) !assert_occupancyMatchesPointers);
+    always_ff @(posedge i_clk)
+      occupancyMatchesPointers: assert (!assert_occupancyMatchesPointers);
 
   end: genAssertOccupancyModel
 
@@ -593,8 +605,8 @@ module routerAssertions
         , !(i_arbiterPacketIsValid && (i_outData[i] == i_arbiterPacket))
         };
 
-    outMatchesArbiter:
-      assert property (@(posedge i_clk) !assert_outMatchesArbiter);
+    always_ff @(posedge i_clk)
+      outMatchesArbiter: assert (!assert_outMatchesArbiter);
 
   end: genAssertOutMatchesArbiter
 
@@ -615,7 +627,8 @@ module routerAssertions
       , (i_fifoMem[trackedPort_q][trackedSlot] != trackedPacket_q)
       };
 
-  trackedInMemory: assert property (@(posedge i_clk) !assert_trackedInMemory);
+  always_ff @(posedge i_clk)
+    trackedInMemory: assert (!assert_trackedInMemory);
 
   // Helper invariant: while tracked, the packet is still inside its FIFO.
   logic assert_trackedInFifo;
@@ -626,7 +639,8 @@ module routerAssertions
                           , (ahead_q >= occupancy_q[trackedPort_q])
                           };
 
-  trackedInFifo: assert property (@(posedge i_clk) !assert_trackedInFifo);
+  always_ff @(posedge i_clk)
+    trackedInFifo: assert (!assert_trackedInFifo);
 
   // End to end: the tracked packet leaves the router unmodified, in FIFO order.
   logic assert_trackedPacketIntegrity;
@@ -637,8 +651,8 @@ module routerAssertions
                                     , (forwardedPacket != trackedPacket_q)
                                     };
 
-  trackedPacketIntegrity:
-    assert property (@(posedge i_clk) !assert_trackedPacketIntegrity);
+  always_ff @(posedge i_clk)
+    trackedPacketIntegrity: assert (!assert_trackedPacketIntegrity);
 
   // }}} Data integrity assertions
 
@@ -658,8 +672,8 @@ module routerAssertions
       , !i_arbiterPacketIsValid
       };
 
-  arbiterWorkConserving:
-    assert property (@(posedge i_clk) !assert_arbiterWorkConserving);
+  always_ff @(posedge i_clk)
+    arbiterWorkConserving: assert (!assert_arbiterWorkConserving);
 
   // A packet presented by the arbiter reaches a registered output next cycle,
   // unless it was just forwarded.
@@ -672,8 +686,8 @@ module routerAssertions
                                   , !(|i_outValid)
                                   };
 
-  outputWorkConserving:
-    assert property (@(posedge i_clk) !assert_outputWorkConserving);
+  always_ff @(posedge i_clk)
+    outputWorkConserving: assert (!assert_outputWorkConserving);
 
   // }}} Work-conserving assertions
 
@@ -687,7 +701,8 @@ module routerAssertions
     always_comb
       cover_outHandshake = outHandshake[i];
 
-    outHandshakeSeen: cover property (@(posedge i_clk) cover_outHandshake);
+    always_ff @(posedge i_clk)
+      outHandshakeSeen: cover (cover_outHandshake);
 
     // Each input FIFO can fill and apply back-pressure.
     logic cover_inFifoFull;
@@ -695,7 +710,8 @@ module routerAssertions
     always_comb
       cover_inFifoFull = i_arst_n && !i_inReady[i];
 
-    inFifoFull: cover property (@(posedge i_clk) cover_inFifoFull);
+    always_ff @(posedge i_clk)
+      inFifoFull: cover (cover_inFifoFull);
 
   end: genCover
 
@@ -705,8 +721,8 @@ module routerAssertions
   always_comb
     cover_allPortsContending = &hasPacket;
 
-  allPortsContending:
-    cover property (@(posedge i_clk) cover_allPortsContending);
+  always_ff @(posedge i_clk)
+    allPortsContending: cover (cover_allPortsContending);
 
   // A tracked packet is delivered.
   logic cover_trackedDelivered;
@@ -714,7 +730,8 @@ module routerAssertions
   always_comb
     cover_trackedDelivered = trackedPop;
 
-  trackedDelivered: cover property (@(posedge i_clk) cover_trackedDelivered);
+  always_ff @(posedge i_clk)
+    trackedDelivered: cover (cover_trackedDelivered);
 
   // Peak throughput: forwards two cycles apart.
   logic cover_peakThroughput;
@@ -722,7 +739,8 @@ module routerAssertions
   always_comb
     cover_peakThroughput = forwarded && forwarded_qq;
 
-  peakThroughput: cover property (@(posedge i_clk) cover_peakThroughput);
+  always_ff @(posedge i_clk)
+    peakThroughput: cover (cover_peakThroughput);
 
   // }}} Cover properties
 

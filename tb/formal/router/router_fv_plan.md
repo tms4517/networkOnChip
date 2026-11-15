@@ -47,13 +47,17 @@ Packed into `[5]` arrays indexed by `pa_noc::ty_DIRECTION`
 
 ## 3. Verification strategy
 
-- **Tool:** JasperGold FPV, run by `make formalRouterTb` from the repo root.
+- **Tool:** SymbiYosys (yosys-slang frontend), run by `make formalRouterTb`
+  from the repo root. Task `prove` uses `abc pdr`; task `cover` uses
+  `smtbmc z3`.
 - **Files:** [routerTb.sv](routerTb.sv) (DUT + checker, all inputs free),
   [routerAssertions.sv](routerAssertions.sv) (checker),
-  [jg/jg.tcl](jg/jg.tcl).
+  [sby/router.sby](sby/router.sby).
 - **Style:** auxiliary modelling logic plus single-cycle booleans
-  (`assert_*`, `assume_*`, `cover_*`), each checked by a concurrent
-  `assert/assume/cover property`. Every boolean includes a `!i_arst_n` term.
+  (`assert_*`, `assume_*`, `cover_*`), each checked by a clocked immediate
+  `assert/assume/cover` in an `always_ff @(posedge i_clk)` (yosys-slang does
+  not support concurrent SVA or `$onehot0`). Every boolean includes a
+  `!i_arst_n` term.
 - **Reference models in the checker:**
   - *Occupancy model*: per-port packet count (+1 on input handshake, -1 on
     FIFO pop). Gives the expected ready and request (`hasPacket`).
@@ -63,14 +67,14 @@ Packed into `[5]` arrays indexed by `pa_noc::ty_DIRECTION`
     Each pop of that FIFO decrements the count; the pop at zero is the tracked
     packet leaving. Because the pick is free, the proof covers every packet
     on every port (Wolper-style data independence).
-- **Coverage:** `check_cov` stimuli (reachability) and COI (checker
-  observability) on `u_dut`.
+- **Coverage:** cover properties only (SymbiYosys has no equivalent of
+  JasperGold's stimuli/COI formal coverage).
 
 ## 4. Assumptions (constraints)
 
 | ID | Assumption | Rationale |
 |----|------------|-----------|
-| A1 | `i_clk` free-running, `i_arst_n` asserted at start then deasserted. | JasperGold `clock` / `reset`. |
+| A1 | `i_arst_n` asserted in the first cycle only, then deasserted. | `resetAtStart` in routerTb (async reset converted to sync by `async2sync`). |
 | A2 | `i_trackPort < 5`. | Selector names a real port (checker only). |
 
 No constraints are placed on input packets, input valids or output readys:
@@ -161,12 +165,10 @@ the downstream keeps accepting.
 4. Data integrity D1, D2 (D1 is the induction helper for D2).
 5. Fairness R3.
 6. Work conserving W1, W2.
-7. Coverage: stimuli and COI on `u_dut` ≈ 100%.
-
-## 7. Results (2026-11-11, JasperGold 2026.09p001, after F-1 fix)
+## 7. Results (2026-11-14, SymbiYosys 0.71 / Yosys 0.53 + yosys-slang)
 
 Re-run with `make formalRouterTb`; logs in `logs/formalRouterTb/`
-(`jg.log`, `router_fv_summary.rpt`, `router_cov.rpt`).
+(`sby.log`, `router_prove/`, `router_cover/`).
 
 | Group | Properties | Result |
 |-------|------------|--------|
@@ -179,7 +181,9 @@ Re-run with `make formalRouterTb`; logs in `logs/formalRouterTb/`
 | Work conserving | W1, W2 | Proven |
 | Covers | C1–C5 | All covered |
 
-All properties prove in under 2 s each.
+`prove` (all 51 assertions, `abc pdr`) passes in about 2 minutes; `cover`
+reaches all 13 covers within 7 cycles in a few seconds. (Originally proven
+with JasperGold 2026.09p001, same results.)
 
 ### F-1: round-robin arbiter grants each port twice in a row (FIXED)
 

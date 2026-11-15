@@ -11,6 +11,8 @@ TEST ?= 1
 SYNTH_PATH = $(NOC_ROOT)/synthesis
 # Optional libstdc++ to LD_PRELOAD for the yosys-slang plugin (set in env if needed).
 YOSYS_SLANG_LIBSTDCPP ?=
+# SymbiYosys executable (needs the yosys-slang plugin and an SMT solver for covers).
+SBY ?= sby
 
 export NOC_ROOT
 
@@ -57,9 +59,10 @@ $(addsuffix Tb,$(DIRECTED_TBS)): %Tb:
 .PHONY: formalRouterTb
 formalRouterTb:
 	mkdir -p $(LOG_DIR)/formalRouterTb && \
-	cd $(LOG_DIR)/formalRouterTb && \
-	rm -rf jgproject && \
-	$(GRID) jg $(FORMAL_PATH)/router/jg/jg.tcl | tee jg.log
+	cd $(FORMAL_PATH)/router/sby && \
+	$(GRID) env $(if $(YOSYS_SLANG_LIBSTDCPP),LD_PRELOAD=$(YOSYS_SLANG_LIBSTDCPP)) \
+		$(SBY) -f --prefix $(LOG_DIR)/formalRouterTb/router router.sby \
+		| tee $(LOG_DIR)/formalRouterTb/sby.log
 
 .PHONY: synthesis
 synthesis:
